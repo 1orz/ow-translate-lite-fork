@@ -21,6 +21,13 @@ public sealed class TranslationCoordinator
         _parser = new OwChatParser(glossary);
     }
 
+    public void ResetChatCycle()
+    {
+        _seenInCurrentChatCycle.Clear();
+        _lastAnyMessageVisibleAt = null;
+        ChatCycleJustReset = false;
+    }
+
     public async Task<IReadOnlyList<TranslationRecord>> ProcessAsync(IOcrEngine ocrEngine, CancellationToken cancellationToken)
     {
         ChatCycleJustReset = false;

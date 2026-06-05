@@ -18,6 +18,11 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _loopCts;
     private IOcrEngine? _currentOcrEngine;
     private string? _currentOcrEngineName;
+    private string? _currentOcrLanguage;
+    private string? _activeRunSettingsKey;
+    private DateTime? _pausedAt;
+    private bool _isRunning;
+    private bool _isLoadingSettings;
     private readonly List<TranslationRecord> _records = [];
 
     public MainWindow()
@@ -35,32 +40,41 @@ public partial class MainWindow : Window
         GlossaryStatusText.Text = $"术语 { _glossary.EntryCount } 项 · { _glossary.Version }";
         LoadSettingsToUi();
         EnsureOverlay();
-        AddLog("就绪。建议先用 Local 模式和记事本文字做冒烟测试。");
+        ApplyRunningState();
+        AddLog("就绪。正式测试建议使用 DeepSeek API；Local Rules 仅用于离线规则冒烟测试。");
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        StopLoop();
+        StopLoop(hideOverlay: false, clearOverlay: false);
         SaveSettingsFromUi();
         _overlay?.Close();
     }
 
     private void LoadSettingsToUi()
     {
-        AppSettings settings = _config.Settings;
-        SelectCombo(OcrEngineCombo, settings.OcrEngine);
-        SelectCombo(OcrLanguageCombo, settings.OcrLanguage);
-        SelectCombo(ProviderCombo, settings.TranslationProvider);
-        EnsureDefaultModelOptions();
-        ApiUrlBox.Text = settings.ApiUrl;
-        ApiKeyBox.Password = settings.ApiKey;
-        ModelCombo.Text = settings.Model;
-        FontSizeSlider.Value = settings.OverlayFontSize;
-        OpacitySlider.Value = settings.OverlayOpacity;
-        ClickThroughCheck.IsChecked = settings.OverlayClickThrough;
-        FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
-        UpdateProviderPreset();
-        UpdateRegionText();
+        _isLoadingSettings = true;
+        try
+        {
+            AppSettings settings = _config.Settings;
+            SelectCombo(OcrEngineCombo, settings.OcrEngine);
+            SelectCombo(OcrLanguageCombo, settings.OcrLanguage);
+            SelectCombo(ProviderCombo, settings.TranslationProvider);
+            EnsureDefaultModelOptions();
+            ApiUrlBox.Text = settings.ApiUrl;
+            ApiKeyBox.Password = settings.ApiKey;
+            ModelCombo.Text = settings.Model;
+            FontSizeSlider.Value = settings.OverlayFontSize;
+            OpacitySlider.Value = settings.OverlayOpacity;
+            ClickThroughCheck.IsChecked = settings.OverlayClickThrough;
+            FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
+            UpdateProviderPreset();
+            UpdateRegionText();
+        }
+        finally
+        {
+            _isLoadingSettings = false;
+        }
     }
 
     private void SaveSettingsFromUi()
@@ -129,12 +143,39 @@ public partial class MainWindow : Window
 
     private void ProviderCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!IsLoaded)
+        if (!IsLoaded || _isLoadingSettings)
         {
             return;
         }
 
         UpdateProviderPreset();
+        if (_isRunning)
+        {
+            SaveSettingsFromUi();
+            RestartLoop(resetChatCycle: false, resetOcrEngine: false, "翻译设置已更新，已继续运行。");
+        }
+    }
+
+    private void OcrSettings_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _isLoadingSettings)
+        {
+            return;
+        }
+
+        SaveSettingsFromUi();
+        _coordinator.ResetChatCycle();
+        InvalidateOcrEngine();
+
+        if (_isRunning)
+        {
+            RestartLoop(resetChatCycle: true, resetOcrEngine: true, "OCR 设置已更新，已重启识别。");
+        }
+        else
+        {
+            _activeRunSettingsKey = null;
+            AddLog("OCR 设置已更新，下次开始时生效。");
+        }
     }
 
     private void FinishFirstRun_Click(object sender, RoutedEventArgs e)
@@ -179,16 +220,16 @@ public partial class MainWindow : Window
         }
 
         EnsureOverlay();
-        _overlay?.Show();
-        StopLoop();
-        _loopCts = new CancellationTokenSource();
-        StatusText.Text = "运行中";
-        _ = RunLoopAsync(_loopCts.Token);
+        string settingsKey = CreateRunSettingsKey();
+        bool settingsChanged = !string.Equals(_activeRunSettingsKey, settingsKey, StringComparison.Ordinal);
+        bool pausedLongEnoughToReset = _pausedAt is DateTime pausedAt && DateTime.Now - pausedAt >= TimeSpan.FromSeconds(3);
+        bool resetChatCycle = settingsChanged || pausedLongEnoughToReset;
+        RestartLoop(resetChatCycle, settingsChanged, resetChatCycle ? "已开始新的识别会话。" : "已继续运行。");
     }
 
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
-        StopLoop();
+        StopLoop(hideOverlay: true, clearOverlay: true);
         StatusText.Text = "已暂停";
         AddLog("已暂停。");
     }
@@ -260,8 +301,7 @@ public partial class MainWindow : Window
     private void ClearLog_Click(object sender, RoutedEventArgs e)
     {
         LogList.Items.Clear();
-        _records.Clear();
-        _overlay?.UpdateRecords(_records);
+        ClearOverlayRecords();
     }
 
     private void SaveOverlayBounds(AppSettings settings)
@@ -326,18 +366,28 @@ public partial class MainWindow : Window
             }
 
             int delay = Math.Clamp(_config.Settings.CaptureIntervalMs, 400, 3000);
-            await Task.Delay(delay, cancellationToken);
+            try
+            {
+                await Task.Delay(delay, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 
     private IOcrEngine GetOcrEngine()
     {
-        if (_currentOcrEngine is not null && _currentOcrEngineName == _config.Settings.OcrEngine)
+        if (_currentOcrEngine is not null &&
+            _currentOcrEngineName == _config.Settings.OcrEngine &&
+            _currentOcrLanguage == _config.Settings.OcrLanguage)
         {
             return _currentOcrEngine;
         }
 
         _currentOcrEngineName = _config.Settings.OcrEngine;
+        _currentOcrLanguage = _config.Settings.OcrLanguage;
         _currentOcrEngine = _config.Settings.OcrEngine == "Windows OCR"
             ? new WindowsOcrEngine()
             : new OneOcrEngine();
@@ -345,11 +395,58 @@ public partial class MainWindow : Window
         return _currentOcrEngine;
     }
 
-    private void StopLoop()
+    private void RestartLoop(bool resetChatCycle, bool resetOcrEngine, string message)
+    {
+        StopLoop(hideOverlay: false, clearOverlay: true);
+
+        if (_config.Settings.CaptureRegion is null)
+        {
+            StatusText.Text = "未选择区域";
+            AddLog("请先选择聊天区域。");
+            return;
+        }
+
+        if (resetChatCycle)
+        {
+            _coordinator.ResetChatCycle();
+        }
+
+        if (resetOcrEngine)
+        {
+            InvalidateOcrEngine();
+        }
+
+        ClearOverlayRecords();
+        EnsureOverlay();
+        _overlay?.Show();
+        _loopCts = new CancellationTokenSource();
+        _isRunning = true;
+        _pausedAt = null;
+        _activeRunSettingsKey = CreateRunSettingsKey();
+        StatusText.Text = "运行中";
+        ApplyRunningState();
+        AddLog(message);
+        _ = RunLoopAsync(_loopCts.Token);
+    }
+
+    private void StopLoop(bool hideOverlay, bool clearOverlay)
     {
         _loopCts?.Cancel();
         _loopCts?.Dispose();
         _loopCts = null;
+        _isRunning = false;
+        ApplyRunningState();
+
+        if (clearOverlay)
+        {
+            ClearOverlayRecords();
+        }
+
+        if (hideOverlay)
+        {
+            _pausedAt = DateTime.Now;
+            _overlay?.Hide();
+        }
     }
 
     private void EnsureOverlay()
@@ -399,5 +496,44 @@ public partial class MainWindow : Window
         }
 
         ModelCombo.Items.Add(model);
+    }
+
+    private void ClearOverlayRecords()
+    {
+        _records.Clear();
+        _overlay?.UpdateRecords(_records);
+    }
+
+    private void InvalidateOcrEngine()
+    {
+        _currentOcrEngine = null;
+        _currentOcrEngineName = null;
+        _currentOcrLanguage = null;
+    }
+
+    private void ApplyRunningState()
+    {
+        if (StartButton is null || StopButton is null)
+        {
+            return;
+        }
+
+        StartButton.IsEnabled = !_isRunning;
+        StopButton.IsEnabled = _isRunning;
+    }
+
+    private string CreateRunSettingsKey()
+    {
+        CaptureRegion? region = _config.Settings.CaptureRegion;
+        string regionKey = region is null
+            ? "none"
+            : $"{region.Left:0.##},{region.Top:0.##},{region.Width:0.##},{region.Height:0.##}";
+        return string.Join("|",
+            _config.Settings.OcrEngine,
+            _config.Settings.OcrLanguage,
+            _config.Settings.TranslationProvider,
+            _config.Settings.ApiUrl,
+            _config.Settings.Model,
+            regionKey);
     }
 }

@@ -89,11 +89,11 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="引擎" Foreground="#AFC6B6" FontSize="12"/>
                     <TextBlock Grid.Column="2" Text="源语言识别" Foreground="#AFC6B6" FontSize="12"/>
-                    <ComboBox x:Name="OcrEngineCombo" Grid.Row="1" Grid.Column="0">
+                    <ComboBox x:Name="OcrEngineCombo" Grid.Row="1" Grid.Column="0" SelectionChanged="OcrSettings_SelectionChanged">
                         <ComboBoxItem Content="OneOCR"/>
                         <ComboBoxItem Content="Windows OCR"/>
                     </ComboBox>
-                    <ComboBox x:Name="OcrLanguageCombo" Grid.Row="1" Grid.Column="2">
+                    <ComboBox x:Name="OcrLanguageCombo" Grid.Row="1" Grid.Column="2" SelectionChanged="OcrSettings_SelectionChanged">
                         <ComboBoxItem Content="auto"/>
                         <ComboBoxItem Content="en"/>
                         <ComboBoxItem Content="ja"/>
