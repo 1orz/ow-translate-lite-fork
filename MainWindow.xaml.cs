@@ -70,6 +70,7 @@ public partial class MainWindow : Window
         try
         {
             AppSettings settings = _config.Settings;
+            NormalizeOcrSettings(settings);
             SelectCombo(OcrEngineCombo, settings.OcrEngine);
             SelectCombo(OcrLanguageCombo, settings.OcrLanguage);
             SelectCombo(ProviderCombo, settings.TranslationProvider);
@@ -111,7 +112,9 @@ public partial class MainWindow : Window
     {
         foreach (ComboBoxItem item in combo.Items)
         {
-            if (string.Equals(item.Content?.ToString(), value, StringComparison.OrdinalIgnoreCase))
+            string itemValue = item.Tag?.ToString() ?? item.Content?.ToString() ?? "";
+            if (string.Equals(itemValue, value, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.Content?.ToString(), value, StringComparison.OrdinalIgnoreCase))
             {
                 combo.SelectedItem = item;
                 return;
@@ -123,7 +126,12 @@ public partial class MainWindow : Window
 
     private static string GetComboText(WpfComboBox combo)
     {
-        return (combo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+        if (combo.SelectedItem is not ComboBoxItem item)
+        {
+            return "";
+        }
+
+        return item.Tag?.ToString() ?? item.Content?.ToString() ?? "";
     }
 
     private void UpdateProviderPreset()
@@ -552,9 +560,7 @@ public partial class MainWindow : Window
 
         _currentOcrEngineName = _config.Settings.OcrEngine;
         _currentOcrLanguage = _config.Settings.OcrLanguage;
-        _currentOcrEngine = _config.Settings.OcrEngine == "Windows OCR"
-            ? new WindowsOcrEngine()
-            : new OneOcrEngine();
+        _currentOcrEngine = new OneOcrEngine();
 
         return _currentOcrEngine;
     }
@@ -667,6 +673,15 @@ public partial class MainWindow : Window
         }
 
         ModelCombo.Items.Add(model);
+    }
+
+    private static void NormalizeOcrSettings(AppSettings settings)
+    {
+        settings.OcrEngine = "OneOCR";
+        if (settings.OcrLanguage is not ("auto" or "en" or "ja" or "ko"))
+        {
+            settings.OcrLanguage = "auto";
+        }
     }
 
     private void ClearOverlayRecords()

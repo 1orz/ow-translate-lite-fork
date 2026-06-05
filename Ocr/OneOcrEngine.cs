@@ -28,12 +28,7 @@ public sealed partial class OneOcrEngine : IOcrEngine
             return Array.Empty<OcrTextLine>();
         }
 
-        using Bitmap prepared = new(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
-        using (Graphics graphics = Graphics.FromImage(prepared))
-        {
-            graphics.DrawImage(bitmap, 0, 0);
-        }
-
+        using Bitmap prepared = OcrImagePreprocessor.PrepareColorPreserving(bitmap);
         BitmapData data = prepared.LockBits(new Rectangle(0, 0, prepared.Width, prepared.Height), ImageLockMode.ReadOnly, prepared.PixelFormat);
         try
         {
@@ -85,7 +80,8 @@ public sealed partial class OneOcrEngine : IOcrEngine
                     double top = Math.Min(Math.Min(box.y1, box.y2), Math.Min(box.y3, box.y4));
                     double right = Math.Max(Math.Max(box.x1, box.x2), Math.Max(box.x3, box.x4));
                     double bottom = Math.Max(Math.Max(box.y1, box.y2), Math.Max(box.y3, box.y4));
-                    lines.Add(new OcrTextLine(text, new Rect(left, top, right - left, bottom - top)));
+                    Rect bounds = OcrImagePreprocessor.ScaleBoundsBack(new Rect(left, top, right - left, bottom - top));
+                    lines.Add(new OcrTextLine(text, bounds));
                 }
             }
 
