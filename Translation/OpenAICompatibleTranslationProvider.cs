@@ -150,29 +150,87 @@ public sealed class OpenAICompatibleTranslationProvider : ITranslationProvider
 
     private static Dictionary<string, string> ExtractTranslations(string responseText)
     {
+        Dictionary<string, string> result = new(StringComparer.Ordinal);
         using JsonDocument document = JsonDocument.Parse(responseText);
         string content = document.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "";
         content = content.Trim().Trim('`').Replace("```json", "", StringComparison.OrdinalIgnoreCase).Replace("```", "").Trim();
 
-        Dictionary<string, string> result = new(StringComparer.Ordinal);
-        using JsonDocument inner = JsonDocument.Parse(content);
-        if (!inner.RootElement.TryGetProperty("translations", out JsonElement translations) ||
-            translations.ValueKind != JsonValueKind.Array)
+        try
         {
-            return result;
+            using JsonDocument inner = JsonDocument.Parse(content);
+            JsonElement root = inner.RootElement;
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                if (root.TryGetProperty("translations", out JsonElement translations))
+                {
+                    ExtractTranslationArray(translations, result);
+                    return result;
+                }
+
+                if (root.TryGetProperty("translation", out JsonElement translation) &&
+                    translation.ValueKind == JsonValueKind.String)
+                {
+                    result["0"] = translation.GetString() ?? "";
+                    return result;
+                }
+
+                foreach (JsonProperty property in root.EnumerateObject())
+                {
+                    if (property.Value.ValueKind == JsonValueKind.String)
+                    {
+                        result[property.Name] = property.Value.GetString() ?? "";
+                    }
+                }
+
+                return result;
+            }
+
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                ExtractTranslationArray(root, result);
+            }
+        }
+        catch (JsonException)
+        {
+            result["0"] = content;
         }
 
+        return result;
+    }
+
+    private static void ExtractTranslationArray(JsonElement translations, Dictionary<string, string> result)
+    {
+        if (translations.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        int index = 0;
         foreach (JsonElement item in translations.EnumerateArray())
         {
-            string? id = item.TryGetProperty("id", out JsonElement idElement) ? idElement.GetString() : null;
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                result[index.ToString()] = item.GetString() ?? "";
+                index++;
+                continue;
+            }
+
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                index++;
+                continue;
+            }
+
+            string? id = item.TryGetProperty("id", out JsonElement idElement) ? idElement.GetString() : index.ToString();
             string? text = item.TryGetProperty("text", out JsonElement textElement) ? textElement.GetString() : null;
+            text ??= item.TryGetProperty("translation", out JsonElement translationElement) ? translationElement.GetString() : null;
             if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(text))
             {
                 result[id] = text;
             }
-        }
 
-        return result;
+            index++;
+        }
     }
 
     private static string CleanupModelText(string text)

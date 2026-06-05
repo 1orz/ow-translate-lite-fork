@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     private static readonly TimeSpan OverlayIdleHideDelay = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan TranslationBatchWindow = TimeSpan.FromMilliseconds(120);
+    private static readonly TimeSpan DisplayDuplicateWindow = TimeSpan.FromSeconds(90);
     private const int MaxOverlayRecords = 50;
     private const int MaxLogRecords = 200;
     private const int MaxTranslationQueueItems = 30;
@@ -503,10 +504,22 @@ public partial class MainWindow : Window
 
     private void AddTranslationRecords(IReadOnlyList<TranslationRecord> records)
     {
+        int addedCount = 0;
         foreach (TranslationRecord record in records)
         {
+            if (IsDisplayDuplicate(record))
+            {
+                continue;
+            }
+
             _records.Add(record);
+            addedCount++;
             AddLog($"{record.Speaker}: {record.SourceText}  =>  {record.TranslatedText}");
+        }
+
+        if (addedCount == 0)
+        {
+            return;
         }
 
         TrimOverlayRecords();
@@ -515,6 +528,17 @@ public partial class MainWindow : Window
         EnsureOverlay();
         _overlay?.Show();
         _overlay?.UpdateRecords(_records);
+    }
+
+    private bool IsDisplayDuplicate(TranslationRecord record)
+    {
+        string speaker = NormalizeSpeakerForCompare(record.Speaker);
+        string source = NormalizeTextForCompare(record.SourceText);
+        DateTime now = DateTime.Now;
+        return _records.Any(existing =>
+            now - existing.Timestamp <= DisplayDuplicateWindow &&
+            NormalizeSpeakerForCompare(existing.Speaker) == speaker &&
+            IsSimilarText(source, NormalizeTextForCompare(existing.SourceText)));
     }
 
     private IOcrEngine GetOcrEngine()
@@ -717,5 +741,48 @@ public partial class MainWindow : Window
             _config.Settings.ApiUrl,
             _config.Settings.Model,
             regionKey);
+    }
+
+    private static string NormalizeSpeakerForCompare(string value)
+    {
+        string lower = value.ToLowerInvariant();
+        return System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", "");
+    }
+
+    private static string NormalizeTextForCompare(string value)
+    {
+        string lower = value.ToLowerInvariant();
+        lower = System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", " ");
+        return System.Text.RegularExpressions.Regex.Replace(lower, @"\s+", " ").Trim();
+    }
+
+    private static bool IsSimilarText(string left, string right)
+    {
+        if (left == right)
+        {
+            return true;
+        }
+
+        if (left.Length < 8 || right.Length < 8)
+        {
+            return false;
+        }
+
+        string shorter = left.Length <= right.Length ? left : right;
+        string longer = left.Length <= right.Length ? right : left;
+        if (longer.Contains(shorter, StringComparison.Ordinal) &&
+            shorter.Length >= Math.Max(8, (int)(longer.Length * 0.65)))
+        {
+            return true;
+        }
+
+        int commonPrefix = 0;
+        int limit = Math.Min(left.Length, right.Length);
+        while (commonPrefix < limit && left[commonPrefix] == right[commonPrefix])
+        {
+            commonPrefix++;
+        }
+
+        return commonPrefix >= Math.Max(8, (int)(limit * 0.75));
     }
 }

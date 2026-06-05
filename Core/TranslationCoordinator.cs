@@ -11,7 +11,9 @@ public sealed class TranslationCoordinator
     private readonly List<VisibleMessageSnapshot> _previousVisibleMessages = [];
     private readonly HashSet<string> _seenInCurrentChatCycle = new(StringComparer.Ordinal);
     private readonly HashSet<string> _pendingMessageKeys = new(StringComparer.Ordinal);
+    private readonly List<VisibleMessageSnapshot> _pendingMessageSnapshots = [];
     private readonly Dictionary<string, DateTime> _recentDedupeCache = new(StringComparer.Ordinal);
+    private readonly List<RecentMessageSnapshot> _recentMessageSnapshots = [];
     private DateTime? _lastAnyMessageVisibleAt;
     private static readonly TimeSpan ChatHiddenReset = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan ShortRecentDedupeTtl = TimeSpan.FromSeconds(30);
@@ -35,18 +37,21 @@ public sealed class TranslationCoordinator
         _previousVisibleMessages.Clear();
         _seenInCurrentChatCycle.Clear();
         _pendingMessageKeys.Clear();
+        _pendingMessageSnapshots.Clear();
         _lastAnyMessageVisibleAt = null;
         ChatCycleJustReset = false;
         HasVisibleChat = false;
         if (clearRecent)
         {
             _recentDedupeCache.Clear();
+            _recentMessageSnapshots.Clear();
         }
     }
 
     public void ClearPendingTranslations()
     {
         _pendingMessageKeys.Clear();
+        _pendingMessageSnapshots.Clear();
     }
 
     public void ReleasePendingTranslations(IReadOnlyList<ParsedChatLine> lines)
@@ -54,6 +59,7 @@ public sealed class TranslationCoordinator
         foreach (ParsedChatLine line in lines)
         {
             _pendingMessageKeys.Remove(CreateMessageKey(line));
+            RemovePendingSnapshot(CreateSnapshot(line));
         }
     }
 
@@ -94,9 +100,11 @@ public sealed class TranslationCoordinator
         foreach (ParsedChatLine line in candidateLines)
         {
             string key = CreateMessageKey(line);
+            VisibleMessageSnapshot snapshot = CreateSnapshot(line);
             if (_seenInCurrentChatCycle.Contains(key) ||
                 _pendingMessageKeys.Contains(key) ||
-                IsRecentDuplicate(key, line.SourceText, now) ||
+                IsPendingDuplicate(snapshot) ||
+                IsRecentDuplicate(key, snapshot, line.SourceText, now) ||
                 !batchKeys.Add(key))
             {
                 continue;
@@ -104,6 +112,7 @@ public sealed class TranslationCoordinator
 
             newLines.Add(line);
             _pendingMessageKeys.Add(key);
+            _pendingMessageSnapshots.Add(snapshot);
         }
 
         return newLines;
@@ -134,8 +143,10 @@ public sealed class TranslationCoordinator
                     result.TranslatedText,
                     DateTime.Now));
                 string key = CreateMessageKey(result.SourceLine);
+                VisibleMessageSnapshot snapshot = CreateSnapshot(result.SourceLine);
                 _seenInCurrentChatCycle.Add(key);
                 _recentDedupeCache[key] = DateTime.Now;
+                _recentMessageSnapshots.Add(new RecentMessageSnapshot(snapshot, DateTime.Now));
             }
 
             return records;
@@ -145,6 +156,7 @@ public sealed class TranslationCoordinator
             foreach (ParsedChatLine line in newLines)
             {
                 _pendingMessageKeys.Remove(CreateMessageKey(line));
+                RemovePendingSnapshot(CreateSnapshot(line));
             }
         }
     }
@@ -161,6 +173,7 @@ public sealed class TranslationCoordinator
             _previousVisibleMessages.Clear();
             _seenInCurrentChatCycle.Clear();
             _pendingMessageKeys.Clear();
+            _pendingMessageSnapshots.Clear();
             _lastAnyMessageVisibleAt = null;
             return true;
         }
@@ -172,7 +185,7 @@ public sealed class TranslationCoordinator
     {
         if (_previousVisibleMessages.Count == 0)
         {
-            return currentLines.TakeLast(Math.Min(currentLines.Count, MaxTailMessagesWithoutAnchor)).ToList();
+            return TakeUnanchoredTail(currentLines);
         }
 
         List<VisibleMessageSnapshot> current = currentLines.Select(CreateSnapshot).ToList();
@@ -182,7 +195,17 @@ public sealed class TranslationCoordinator
             return currentLines.Skip(anchorIndex + 1).ToList();
         }
 
-        return currentLines.TakeLast(Math.Min(currentLines.Count, MaxTailMessagesWithoutAnchor)).ToList();
+        return TakeUnanchoredTail(currentLines);
+    }
+
+    private static List<ParsedChatLine> TakeUnanchoredTail(IReadOnlyList<ParsedChatLine> currentLines)
+    {
+        if (currentLines.Count <= MaxTailMessagesWithoutAnchor)
+        {
+            return currentLines.ToList();
+        }
+
+        return currentLines.TakeLast(MaxTailMessagesWithoutAnchor).ToList();
     }
 
     private int FindBestAnchorIndex(IReadOnlyList<VisibleMessageSnapshot> current)
@@ -268,16 +291,23 @@ public sealed class TranslationCoordinator
     }
 
     private static VisibleMessageSnapshot CreateSnapshot(ParsedChatLine line) =>
-        new(NormalizeForHash(line.Speaker), NormalizeForHash(line.SourceText));
+        new(NormalizeSpeakerForHash(line.Speaker), NormalizeForHash(line.SourceText));
 
-    private bool IsRecentDuplicate(string key, string text, DateTime now)
+    private bool IsPendingDuplicate(VisibleMessageSnapshot snapshot) =>
+        _pendingMessageSnapshots.Any(pending => IsAnchorMatch(snapshot, pending));
+
+    private bool IsRecentDuplicate(string key, VisibleMessageSnapshot snapshot, string text, DateTime now)
     {
-        if (!_recentDedupeCache.TryGetValue(key, out DateTime lastSeenAt))
+        TimeSpan ttl = GetRecentDedupeTtl(text);
+        if (_recentDedupeCache.TryGetValue(key, out DateTime lastSeenAt) &&
+            now - lastSeenAt < ttl)
         {
-            return false;
+            return true;
         }
 
-        return now - lastSeenAt < GetRecentDedupeTtl(text);
+        return _recentMessageSnapshots.Any(recent =>
+            now - recent.SeenAt < ttl &&
+            IsAnchorMatch(snapshot, recent.Message));
     }
 
     private void CleanupRecentDedupe(DateTime now)
@@ -290,8 +320,11 @@ public sealed class TranslationCoordinator
             }
         }
 
+        _recentMessageSnapshots.RemoveAll(item => now - item.SeenAt >= LongRecentDedupeTtl);
+
         if (_recentDedupeCache.Count <= MaxRecentDedupeItems)
         {
+            TrimRecentSnapshots();
             return;
         }
 
@@ -302,6 +335,27 @@ public sealed class TranslationCoordinator
                      .ToList())
         {
             _recentDedupeCache.Remove(key);
+        }
+
+        TrimRecentSnapshots();
+    }
+
+    private void TrimRecentSnapshots()
+    {
+        if (_recentMessageSnapshots.Count <= MaxRecentDedupeItems)
+        {
+            return;
+        }
+
+        _recentMessageSnapshots.RemoveRange(0, _recentMessageSnapshots.Count - MaxRecentDedupeItems);
+    }
+
+    private void RemovePendingSnapshot(VisibleMessageSnapshot snapshot)
+    {
+        int index = _pendingMessageSnapshots.FindIndex(pending => IsAnchorMatch(snapshot, pending));
+        if (index >= 0)
+        {
+            _pendingMessageSnapshots.RemoveAt(index);
         }
     }
 
@@ -317,7 +371,7 @@ public sealed class TranslationCoordinator
     }
 
     private static string CreateMessageKey(ParsedChatLine line) =>
-        $"{NormalizeForHash(line.Speaker)}:{NormalizeForHash(line.SourceText)}";
+        $"{NormalizeSpeakerForHash(line.Speaker)}:{NormalizeForHash(line.SourceText)}";
 
     private static string NormalizeForHash(string value)
     {
@@ -326,5 +380,13 @@ public sealed class TranslationCoordinator
         return System.Text.RegularExpressions.Regex.Replace(lower, @"\s+", " ").Trim();
     }
 
+    private static string NormalizeSpeakerForHash(string value)
+    {
+        string lower = value.ToLowerInvariant();
+        return System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", "");
+    }
+
     private sealed record VisibleMessageSnapshot(string NormalizedSpeaker, string NormalizedText);
+
+    private sealed record RecentMessageSnapshot(VisibleMessageSnapshot Message, DateTime SeenAt);
 }
