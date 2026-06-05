@@ -5,6 +5,7 @@ namespace OwTranslateLite.Core;
 public sealed class AppSettings
 {
     public bool FirstRun { get; set; } = true;
+    public bool ShowQuickStart { get; set; } = true;
     public string OcrEngine { get; set; } = "OneOCR";
     public string OcrLanguage { get; set; } = "auto";
     public string TranslationProvider { get; set; } = "DeepSeek";

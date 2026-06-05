@@ -55,6 +55,7 @@ public partial class MainWindow : Window
         EnsureOverlay();
         ApplyRunningState();
         AddLog("就绪。正式测试建议使用 DeepSeek API；Local Rules 仅用于离线规则冒烟测试。");
+        ShowQuickStartIfNeeded();
     }
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -206,6 +207,25 @@ public partial class MainWindow : Window
         _config.Save();
         FirstRunPanel.Visibility = Visibility.Collapsed;
         AddLog("首次配置完成。");
+    }
+
+    private void ShowQuickStartIfNeeded()
+    {
+        if (!_config.Settings.ShowQuickStart)
+        {
+            return;
+        }
+
+        QuickStartWindow quickStart = new()
+        {
+            Owner = this
+        };
+        quickStart.ShowDialog();
+        if (quickStart.DoNotShowAgain)
+        {
+            _config.Settings.ShowQuickStart = false;
+            _config.Save();
+        }
     }
 
     private void SelectArea_Click(object sender, RoutedEventArgs e)
