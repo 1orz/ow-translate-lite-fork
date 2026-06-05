@@ -15,6 +15,8 @@ public partial class MainWindow : Window
     private TranslationCoordinator _coordinator = null!;
     private OverlayWindow? _overlay;
     private CancellationTokenSource? _loopCts;
+    private IOcrEngine? _currentOcrEngine;
+    private string? _currentOcrEngineName;
     private readonly List<TranslationRecord> _records = [];
 
     public MainWindow()
@@ -235,9 +237,17 @@ public partial class MainWindow : Window
 
     private IOcrEngine GetOcrEngine()
     {
-        return _config.Settings.OcrEngine == "Windows OCR"
+        if (_currentOcrEngine is not null && _currentOcrEngineName == _config.Settings.OcrEngine)
+        {
+            return _currentOcrEngine;
+        }
+
+        _currentOcrEngineName = _config.Settings.OcrEngine;
+        _currentOcrEngine = _config.Settings.OcrEngine == "Windows OCR"
             ? new WindowsOcrEngine()
             : new OneOcrEngine();
+
+        return _currentOcrEngine;
     }
 
     private void StopLoop()

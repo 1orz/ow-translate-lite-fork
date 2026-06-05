@@ -239,7 +239,7 @@ public sealed partial class OneOcrEngine : IOcrEngine
 
     private static partial class NativeMethods
     {
-        [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+        [LibraryImport("kernel32.dll", EntryPoint = "SetDllDirectoryW", StringMarshalling = StringMarshalling.Utf16)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool SetDllDirectory(string lpPathName);
     }
