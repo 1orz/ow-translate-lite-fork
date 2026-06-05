@@ -12,8 +12,11 @@ namespace OwTranslateLite;
 public partial class MainWindow : Window
 {
     private static readonly TimeSpan OverlayIdleHideDelay = TimeSpan.FromSeconds(6);
+    private static readonly TimeSpan TranslationBatchWindow = TimeSpan.FromMilliseconds(120);
     private const int MaxOverlayRecords = 50;
     private const int MaxLogRecords = 200;
+    private const int MaxTranslationQueueItems = 30;
+    private const int MaxTranslationBatchSize = 4;
 
     private readonly ConfigStore _config = new();
     private OwGlossaryService _glossary = null!;
@@ -21,6 +24,9 @@ public partial class MainWindow : Window
     private OverlayWindow? _overlay;
     private CancellationTokenSource? _loopCts;
     private IOcrEngine? _currentOcrEngine;
+    private readonly Queue<ParsedChatLine> _translationQueue = [];
+    private readonly object _translationQueueLock = new();
+    private Task? _translationWorkerTask;
     private string? _currentOcrEngineName;
     private string? _currentOcrLanguage;
     private string? _activeRunSettingsKey;
@@ -331,24 +337,10 @@ public partial class MainWindow : Window
             try
             {
                 IOcrEngine engine = GetOcrEngine();
-                IReadOnlyList<TranslationRecord> records = await _coordinator.ProcessAsync(engine, cancellationToken);
-                if (records.Count > 0)
+                IReadOnlyList<ParsedChatLine> newLines = await _coordinator.DetectNewLinesAsync(engine, cancellationToken);
+                if (newLines.Count > 0)
                 {
-                    Dispatcher.Invoke(() =>
-                    {
-                        foreach (TranslationRecord record in records)
-                        {
-                            _records.Add(record);
-                            AddLog($"{record.Speaker}: {record.SourceText}  =>  {record.TranslatedText}");
-                        }
-
-                        TrimOverlayRecords();
-                        _lastTranslationCompletedAt = DateTime.Now;
-                        _overlayHiddenByIdle = false;
-                        EnsureOverlay();
-                        _overlay?.Show();
-                        _overlay?.UpdateRecords(_records);
-                    });
+                    EnqueueTranslationLines(newLines, cancellationToken);
                 }
                 else if (_coordinator.ChatCycleJustReset)
                 {
@@ -381,6 +373,148 @@ public partial class MainWindow : Window
                 break;
             }
         }
+    }
+
+    private void EnqueueTranslationLines(IReadOnlyList<ParsedChatLine> lines, CancellationToken cancellationToken)
+    {
+        List<ParsedChatLine> dropped = [];
+        lock (_translationQueueLock)
+        {
+            foreach (ParsedChatLine line in lines)
+            {
+                _translationQueue.Enqueue(line);
+            }
+
+            while (_translationQueue.Count > MaxTranslationQueueItems)
+            {
+                dropped.Add(_translationQueue.Dequeue());
+            }
+        }
+
+        if (dropped.Count > 0)
+        {
+            _coordinator.ReleasePendingTranslations(dropped);
+            Dispatcher.Invoke(() => AddLog($"翻译队列过长，已跳过 {dropped.Count} 条较旧消息。"));
+        }
+
+        EnsureTranslationWorker(cancellationToken);
+    }
+
+    private void EnsureTranslationWorker(CancellationToken cancellationToken)
+    {
+        lock (_translationQueueLock)
+        {
+            if (_translationWorkerTask is not null && !_translationWorkerTask.IsCompleted)
+            {
+                return;
+            }
+
+            _translationWorkerTask = Task.Run(() => RunTranslationWorkerAsync(cancellationToken), CancellationToken.None);
+        }
+    }
+
+    private async Task RunTranslationWorkerAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                List<ParsedChatLine> batch = await DequeueTranslationBatchAsync(cancellationToken);
+                if (batch.Count == 0)
+                {
+                    break;
+                }
+
+                try
+                {
+                    Stopwatch stopwatch = Stopwatch.StartNew();
+                    IReadOnlyList<TranslationRecord> records = await _coordinator.TranslateAsync(batch, cancellationToken);
+                    stopwatch.Stop();
+                    if (records.Count > 0)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            AddTranslationRecords(records);
+                            LatencyText.Text = $"{stopwatch.ElapsedMilliseconds} ms API";
+                        });
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    _coordinator.ReleasePendingTranslations(batch);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _coordinator.ReleasePendingTranslations(batch);
+                    Dispatcher.Invoke(() => AddLog($"翻译请求失败：{ex.Message}"));
+                }
+            }
+        }
+        finally
+        {
+            bool shouldRestart;
+            lock (_translationQueueLock)
+            {
+                _translationWorkerTask = null;
+                shouldRestart = _isRunning && _translationQueue.Count > 0;
+            }
+
+            if (shouldRestart && _loopCts is CancellationTokenSource cts)
+            {
+                EnsureTranslationWorker(cts.Token);
+            }
+        }
+    }
+
+    private async Task<List<ParsedChatLine>> DequeueTranslationBatchAsync(CancellationToken cancellationToken)
+    {
+        List<ParsedChatLine> batch = [];
+        lock (_translationQueueLock)
+        {
+            if (_translationQueue.Count == 0)
+            {
+                return batch;
+            }
+
+            batch.Add(_translationQueue.Dequeue());
+        }
+
+        try
+        {
+            await Task.Delay(TranslationBatchWindow, cancellationToken);
+        }
+        catch
+        {
+            _coordinator.ReleasePendingTranslations(batch);
+            throw;
+        }
+
+        lock (_translationQueueLock)
+        {
+            while (batch.Count < MaxTranslationBatchSize && _translationQueue.Count > 0)
+            {
+                batch.Add(_translationQueue.Dequeue());
+            }
+        }
+
+        return batch;
+    }
+
+    private void AddTranslationRecords(IReadOnlyList<TranslationRecord> records)
+    {
+        foreach (TranslationRecord record in records)
+        {
+            _records.Add(record);
+            AddLog($"{record.Speaker}: {record.SourceText}  =>  {record.TranslatedText}");
+        }
+
+        TrimOverlayRecords();
+        _lastTranslationCompletedAt = DateTime.Now;
+        _overlayHiddenByIdle = false;
+        EnsureOverlay();
+        _overlay?.Show();
+        _overlay?.UpdateRecords(_records);
     }
 
     private IOcrEngine GetOcrEngine()
@@ -440,6 +574,8 @@ public partial class MainWindow : Window
         _loopCts?.Dispose();
         _loopCts = null;
         _isRunning = false;
+        ClearTranslationQueue();
+        _coordinator.ClearPendingTranslations();
         ApplyRunningState();
 
         if (clearOverlay)
@@ -515,6 +651,14 @@ public partial class MainWindow : Window
         _lastTranslationCompletedAt = null;
         _overlayHiddenByIdle = false;
         _overlay?.UpdateRecords(_records);
+    }
+
+    private void ClearTranslationQueue()
+    {
+        lock (_translationQueueLock)
+        {
+            _translationQueue.Clear();
+        }
     }
 
     private void TrimOverlayRecords()
