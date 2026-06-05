@@ -26,7 +26,7 @@ public sealed class TranslationCoordinator
             return Array.Empty<TranslationRecord>();
         }
 
-        using System.Drawing.Bitmap bitmap = ScreenCaptureService.Capture(_settings.CaptureRegion.Value);
+        using System.Drawing.Bitmap bitmap = ScreenCaptureService.Capture(_settings.CaptureRegion.ToRect());
         IReadOnlyList<OcrTextLine> ocrLines = await ocrEngine.RecognizeAsync(bitmap, _settings.OcrLanguage, cancellationToken);
         IReadOnlyList<ParsedChatLine> chatLines = _parser.Parse(ocrLines);
         if (chatLines.Count == 0)

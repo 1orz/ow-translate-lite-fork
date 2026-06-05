@@ -134,7 +134,7 @@ public partial class MainWindow : Window
         selector.Owner = this;
         selector.SelectionCompleted += (_, rect) =>
         {
-            _config.Settings.CaptureRegion = rect;
+            _config.Settings.CaptureRegion = CaptureRegion.FromRect(rect);
             _config.Save();
             UpdateRegionText();
             EnsureOverlay();
@@ -257,16 +257,16 @@ public partial class MainWindow : Window
 
         _overlay = new OverlayWindow();
         _overlay.ApplySettings(_config.Settings);
-        if (_config.Settings.CaptureRegion is Rect rect)
+        if (_config.Settings.CaptureRegion is CaptureRegion region)
         {
-            _overlay.MoveNear(rect);
+            _overlay.MoveNear(region.ToRect());
         }
     }
 
     private void UpdateRegionText()
     {
-        RegionText.Text = _config.Settings.CaptureRegion is Rect rect
-            ? $"区域：{rect.Left:0},{rect.Top:0}  {rect.Width:0}x{rect.Height:0}"
+        RegionText.Text = _config.Settings.CaptureRegion is CaptureRegion region
+            ? $"区域：{region.Left:0},{region.Top:0}  {region.Width:0}x{region.Height:0}"
             : "未选择区域";
     }
 

@@ -16,5 +16,26 @@ public sealed class AppSettings
     public double OverlayOpacity { get; set; } = 0.86;
     public double OverlayFontSize { get; set; } = 20;
     public bool OverlayClickThrough { get; set; } = true;
-    public Rect? CaptureRegion { get; set; }
+    public CaptureRegion? CaptureRegion { get; set; }
+}
+
+public sealed class CaptureRegion
+{
+    public double Left { get; set; }
+    public double Top { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+
+    public Rect ToRect() => new(Left, Top, Width, Height);
+
+    public static CaptureRegion FromRect(Rect rect)
+    {
+        return new CaptureRegion
+        {
+            Left = rect.Left,
+            Top = rect.Top,
+            Width = rect.Width,
+            Height = rect.Height
+        };
+    }
 }
