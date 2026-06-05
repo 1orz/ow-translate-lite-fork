@@ -98,8 +98,6 @@
                         <ComboBoxItem Content="en"/>
                         <ComboBoxItem Content="ja"/>
                         <ComboBoxItem Content="ko"/>
-                        <ComboBoxItem Content="ru"/>
-                        <ComboBoxItem Content="zh"/>
                     </ComboBox>
                 </Grid>
                 <TextBlock Text="输出固定为简体中文；这里选择的是 OCR 源语言，不是目标语言。" Foreground="#8FA19A" TextWrapping="Wrap" Margin="0,-8,0,14"/>

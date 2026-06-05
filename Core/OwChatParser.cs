@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using System.Windows;
 
 namespace OwTranslateLite.Core;
 
@@ -23,48 +22,40 @@ public sealed class OwChatParser
                 continue;
             }
 
-            if (!TryExtractPlayerMessage(normalized, out string speaker, out string message))
+            foreach ((string speaker, string message) in ExtractPlayerMessages(normalized))
             {
-                continue;
-            }
+                if (ShouldSkipMessage(message))
+                {
+                    continue;
+                }
 
-            if (ShouldSkipMessage(message))
-            {
-                continue;
+                IReadOnlyList<GlossaryHit> hits = _glossary.FindHits(message);
+                parsed.Add(new ParsedChatLine(speaker, message, line.Bounds, hits));
             }
-
-            IReadOnlyList<GlossaryHit> hits = _glossary.FindHits(message);
-            parsed.Add(new ParsedChatLine(speaker, message, line.Bounds, hits));
         }
 
-        return MergeNearbyLines(parsed);
+        return parsed;
     }
 
-    private static bool TryExtractPlayerMessage(string text, out string speaker, out string message)
+    private static IReadOnlyList<(string Speaker, string Message)> ExtractPlayerMessages(string text)
     {
-        speaker = "";
-        message = "";
+        List<(string Speaker, string Message)> messages = [];
 
-        string cleaned = Regex.Replace(text, @"^\s*(\[?(TEAM|MATCH|GROUP|队伍|比赛|小队|团队|전체|팀|マッチ|チーム)\]?\s*)+", "", RegexOptions.IgnoreCase).Trim();
-        Match match = Regex.Match(cleaned, @"^(?<speaker>[^:：]{2,24})[:：]\s*(?<message>.+)$");
-        if (!match.Success)
+        foreach (Match match in Regex.Matches(
+            text,
+            @"\[(?<speaker>[^\]\r\n]{2,24})\]\s*[:：]\s*(?<message>.*?)(?=\s*\[[^\]\r\n]{2,24}\]\s*[:：]|$)"))
         {
-            return false;
+            string speaker = match.Groups["speaker"].Value.Trim();
+            string message = match.Groups["message"].Value.Trim();
+            if (speaker.Length == 0 || message.Length == 0)
+            {
+                continue;
+            }
+
+            messages.Add((speaker, message));
         }
 
-        speaker = match.Groups["speaker"].Value.Trim();
-        message = match.Groups["message"].Value.Trim();
-        if (speaker.Length == 0 || message.Length == 0)
-        {
-            return false;
-        }
-
-        if (Regex.IsMatch(speaker, @"[\u4e00-\u9fff]{4,}") && !Regex.IsMatch(speaker, @"[#\d]"))
-        {
-            return false;
-        }
-
-        return true;
+        return messages;
     }
 
     private static bool ShouldSkipMessage(string message)
@@ -80,44 +71,11 @@ public sealed class OwChatParser
             return true;
         }
 
-        if (!Regex.IsMatch(message, @"[A-Za-zА-Яа-яぁ-んァ-ン가-힣]"))
+        if (!Regex.IsMatch(message, @"[A-Za-zぁ-んァ-ン가-힣]"))
         {
             return true;
         }
 
         return false;
-    }
-
-    private static IReadOnlyList<ParsedChatLine> MergeNearbyLines(List<ParsedChatLine> lines)
-    {
-        if (lines.Count <= 1)
-        {
-            return lines;
-        }
-
-        List<ParsedChatLine> merged = [];
-        foreach (ParsedChatLine line in lines)
-        {
-            ParsedChatLine? previous = merged.LastOrDefault();
-            if (previous is not null &&
-                previous.Speaker.Equals(line.Speaker, StringComparison.OrdinalIgnoreCase) &&
-                Math.Abs(line.Bounds.Top - previous.Bounds.Bottom) < 18)
-            {
-                Rect bounds = Rect.Union(previous.Bounds, line.Bounds);
-                List<GlossaryHit> hits = [.. previous.GlossaryHits, .. line.GlossaryHits];
-                merged[^1] = previous with
-                {
-                    SourceText = $"{previous.SourceText} {line.SourceText}",
-                    Bounds = bounds,
-                    GlossaryHits = hits.GroupBy(hit => hit.Target).Select(group => group.First()).ToList()
-                };
-            }
-            else
-            {
-                merged.Add(line);
-            }
-        }
-
-        return merged;
     }
 }

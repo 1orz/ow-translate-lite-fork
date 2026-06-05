@@ -16,9 +16,7 @@ public sealed class WindowsOcrEngine : IOcrEngine
     {
         ["en"] = "en-US",
         ["ja"] = "ja-JP",
-        ["ko"] = "ko-KR",
-        ["ru"] = "ru-RU",
-        ["zh"] = "zh-Hans-CN"
+        ["ko"] = "ko-KR"
     };
 
     public string Name => "Windows OCR";
@@ -38,7 +36,7 @@ public sealed class WindowsOcrEngine : IOcrEngine
         if (IsAutoLanguage(languageCode))
         {
             List<OcrTextLine> merged = [];
-            foreach (string code in new[] { "en", "ja", "ko", "ru", "zh" })
+            foreach (string code in new[] { "en", "ja", "ko" })
             {
                 IReadOnlyList<OcrTextLine> lines = await RecognizeWithLanguageAsync(softwareBitmap, code);
                 foreach (OcrTextLine line in lines)
@@ -154,7 +152,7 @@ public sealed class WindowsOcrEngine : IOcrEngine
 
     private static string CleanupSpacing(string text, string languageCode)
     {
-        if (languageCode.Equals("ja", StringComparison.OrdinalIgnoreCase) || languageCode.Equals("zh", StringComparison.OrdinalIgnoreCase))
+        if (languageCode.Equals("ja", StringComparison.OrdinalIgnoreCase))
         {
             return System.Text.RegularExpressions.Regex.Replace(text, @"([\p{IsHiragana}\p{IsKatakana}\p{IsCJKUnifiedIdeographs}])\s+([\p{IsHiragana}\p{IsKatakana}\p{IsCJKUnifiedIdeographs}])", "$1$2");
         }

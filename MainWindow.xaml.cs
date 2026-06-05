@@ -11,6 +11,10 @@ namespace OwTranslateLite;
 
 public partial class MainWindow : Window
 {
+    private static readonly TimeSpan OverlayIdleHideDelay = TimeSpan.FromSeconds(6);
+    private const int MaxOverlayRecords = 50;
+    private const int MaxLogRecords = 200;
+
     private readonly ConfigStore _config = new();
     private OwGlossaryService _glossary = null!;
     private TranslationCoordinator _coordinator = null!;
@@ -21,6 +25,8 @@ public partial class MainWindow : Window
     private string? _currentOcrLanguage;
     private string? _activeRunSettingsKey;
     private DateTime? _pausedAt;
+    private DateTime? _lastTranslationCompletedAt;
+    private bool _overlayHiddenByIdle;
     private bool _isRunning;
     private bool _isLoadingSettings;
     private readonly List<TranslationRecord> _records = [];
@@ -229,7 +235,7 @@ public partial class MainWindow : Window
 
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
-        StopLoop(hideOverlay: true, clearOverlay: true);
+        StopLoop(hideOverlay: true, clearOverlay: false);
         StatusText.Text = "已暂停";
         AddLog("已暂停。");
     }
@@ -336,25 +342,25 @@ public partial class MainWindow : Window
                             AddLog($"{record.Speaker}: {record.SourceText}  =>  {record.TranslatedText}");
                         }
 
-                        while (_records.Count > 8)
-                        {
-                            _records.RemoveAt(0);
-                        }
-
+                        TrimOverlayRecords();
+                        _lastTranslationCompletedAt = DateTime.Now;
+                        _overlayHiddenByIdle = false;
+                        EnsureOverlay();
+                        _overlay?.Show();
                         _overlay?.UpdateRecords(_records);
                     });
                 }
                 else if (_coordinator.ChatCycleJustReset)
                 {
-                    Dispatcher.Invoke(() =>
-                    {
-                        _records.Clear();
-                        _overlay?.UpdateRecords(_records);
-                    });
+                    Dispatcher.Invoke(MaybeHideOverlayAfterIdle);
                 }
 
                 stopwatch.Stop();
-                Dispatcher.Invoke(() => LatencyText.Text = $"{stopwatch.ElapsedMilliseconds} ms");
+                Dispatcher.Invoke(() =>
+                {
+                    MaybeHideOverlayAfterIdle();
+                    LatencyText.Text = $"{stopwatch.ElapsedMilliseconds} ms";
+                });
             }
             catch (OperationCanceledException)
             {
@@ -397,7 +403,7 @@ public partial class MainWindow : Window
 
     private void RestartLoop(bool resetChatCycle, bool resetOcrEngine, string message)
     {
-        StopLoop(hideOverlay: false, clearOverlay: true);
+        StopLoop(hideOverlay: false, clearOverlay: false);
 
         if (_config.Settings.CaptureRegion is null)
         {
@@ -416,12 +422,11 @@ public partial class MainWindow : Window
             InvalidateOcrEngine();
         }
 
-        ClearOverlayRecords();
         EnsureOverlay();
-        _overlay?.Show();
         _loopCts = new CancellationTokenSource();
         _isRunning = true;
         _pausedAt = null;
+        _overlayHiddenByIdle = false;
         _activeRunSettingsKey = CreateRunSettingsKey();
         StatusText.Text = "运行中";
         ApplyRunningState();
@@ -445,6 +450,7 @@ public partial class MainWindow : Window
         if (hideOverlay)
         {
             _pausedAt = DateTime.Now;
+            _overlayHiddenByIdle = false;
             _overlay?.Hide();
         }
     }
@@ -476,6 +482,11 @@ public partial class MainWindow : Window
     {
         string line = $"[{DateTime.Now:HH:mm:ss}] {message}";
         LogList.Items.Add(line);
+        while (LogList.Items.Count > MaxLogRecords)
+        {
+            LogList.Items.RemoveAt(0);
+        }
+
         LogList.ScrollIntoView(line);
     }
 
@@ -501,7 +512,34 @@ public partial class MainWindow : Window
     private void ClearOverlayRecords()
     {
         _records.Clear();
+        _lastTranslationCompletedAt = null;
+        _overlayHiddenByIdle = false;
         _overlay?.UpdateRecords(_records);
+    }
+
+    private void TrimOverlayRecords()
+    {
+        while (_records.Count > MaxOverlayRecords)
+        {
+            _records.RemoveAt(0);
+        }
+    }
+
+    private void MaybeHideOverlayAfterIdle()
+    {
+        if (!_isRunning || _overlay is null || _overlayHiddenByIdle || _coordinator.HasVisibleChat)
+        {
+            return;
+        }
+
+        if (_lastTranslationCompletedAt is not DateTime completedAt ||
+            DateTime.Now - completedAt < OverlayIdleHideDelay)
+        {
+            return;
+        }
+
+        _overlay.Hide();
+        _overlayHiddenByIdle = true;
     }
 
     private void InvalidateOcrEngine()
