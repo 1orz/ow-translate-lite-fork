@@ -1,0 +1,9 @@
+bin/
+obj/
+app/
+.vs/
+*.user
+*.suo
+*.log
+*.tmp
+publish/

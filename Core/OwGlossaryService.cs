@@ -1,0 +1,215 @@
+using System.IO;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace OwTranslateLite.Core;
+
+public sealed class OwGlossaryService
+{
+    private readonly List<GlossaryEntry> _entries = [];
+    private readonly List<RewriteRule> _rewrites = [];
+    private readonly List<string> _ignorePhrases = [];
+    private readonly Dictionary<string, GlossaryEntry> _normalizedTermMap = new(StringComparer.OrdinalIgnoreCase);
+
+    public string Version { get; private set; } = "unknown";
+    public int EntryCount => _entries.Count;
+
+    public static OwGlossaryService LoadDefault()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "Resources", "OwGlossary.zh-CN.json");
+        if (!File.Exists(path))
+        {
+            path = Path.Combine(Environment.CurrentDirectory, "Resources", "OwGlossary.zh-CN.json");
+        }
+
+        string json = File.ReadAllText(path, System.Text.Encoding.UTF8);
+        GlossaryFile file = JsonSerializer.Deserialize<GlossaryFile>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new GlossaryFile();
+
+        OwGlossaryService service = new();
+        service.Version = file.Version ?? "unknown";
+        service._ignorePhrases.AddRange(file.IgnorePhrases ?? []);
+        service._entries.AddRange(file.Entries ?? []);
+        service._rewrites.AddRange(file.LocalRewrites ?? []);
+
+        foreach (GlossaryEntry entry in service._entries)
+        {
+            foreach (string term in entry.Terms ?? [])
+            {
+                string key = NormalizeKey(term);
+                if (!service._normalizedTermMap.ContainsKey(key))
+                {
+                    service._normalizedTermMap[key] = entry;
+                }
+            }
+        }
+
+        return service;
+    }
+
+    public string NormalizeOcrText(string text)
+    {
+        string result = text.Trim();
+        result = Regex.Replace(result, @"\s+", " ");
+        result = result.Replace("：", ":").Replace("﹕", ":").Replace("｜", "|");
+        result = result.Replace("D Va", "D.Va", StringComparison.OrdinalIgnoreCase);
+        result = Regex.Replace(result, @"\b([oO])\s*T\b", "OT");
+        result = Regex.Replace(result, @"\bI\s+need\b", "I need", RegexOptions.IgnoreCase);
+        return result;
+    }
+
+    public bool ShouldIgnoreLine(string text)
+    {
+        string normalized = NormalizeOcrText(text);
+        if (normalized.Length < 2)
+        {
+            return true;
+        }
+
+        if (_ignorePhrases.Any(phrase => normalized.Contains(phrase, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        if (Regex.IsMatch(normalized, @"^[\p{P}\p{S}\d\s]+$"))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public IReadOnlyList<GlossaryHit> FindHits(string text)
+    {
+        List<GlossaryHit> hits = [];
+        string normalizedText = NormalizeKey(text);
+
+        foreach (GlossaryEntry entry in _entries)
+        {
+            foreach (string term in entry.Terms ?? [])
+            {
+                string key = NormalizeKey(term);
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+
+                bool hit = key.Length <= 3
+                    ? Regex.IsMatch(normalizedText, $@"(^| ){Regex.Escape(key)}( |$)")
+                    : normalizedText.Contains(key, StringComparison.OrdinalIgnoreCase);
+
+                if (hit)
+                {
+                    hits.Add(new GlossaryHit(term, entry.ZhCn ?? term, entry.Category ?? "term"));
+                    break;
+                }
+            }
+        }
+
+        return hits
+            .GroupBy(hit => hit.Target)
+            .Select(group => group.First())
+            .Take(12)
+            .ToList();
+    }
+
+    public string ApplyTerms(string text)
+    {
+        string result = text;
+        foreach (GlossaryHit hit in FindHits(text))
+        {
+            result = Regex.Replace(result, Regex.Escape(hit.Source), hit.Target, RegexOptions.IgnoreCase);
+        }
+
+        return result;
+    }
+
+    public string TryLocalTranslate(string text)
+    {
+        string normalized = NormalizeOcrText(text);
+        string withTerms = ApplyTerms(normalized);
+
+        foreach (RewriteRule rule in _rewrites)
+        {
+            if (string.IsNullOrWhiteSpace(rule.Pattern) || string.IsNullOrWhiteSpace(rule.ZhCn))
+            {
+                continue;
+            }
+
+            Match match = Regex.Match(normalized, rule.Pattern, RegexOptions.IgnoreCase);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            string output = rule.ZhCn;
+            output = output.Replace("{term}", FindFirstTerm(match.Value) ?? withTerms);
+            output = output.Replace("{skill}", FindFirstByCategory(match.Value, "ability") ?? "技能");
+            return output;
+        }
+
+        IReadOnlyList<GlossaryHit> hits = FindHits(normalized);
+        if (hits.Count > 0)
+        {
+            string compact = withTerms;
+            compact = Regex.Replace(compact, @"\b(no|なし|없음)\b", "没", RegexOptions.IgnoreCase);
+            compact = Regex.Replace(compact, @"\b(focus|フォーカス|점사)\b", "集火", RegexOptions.IgnoreCase);
+            compact = Regex.Replace(compact, @"\b(behind|flank|裏|뒤)\b", "绕后", RegexOptions.IgnoreCase);
+            compact = Regex.Replace(compact, @"\b(ult|ultimate|ウルト|궁)\b", "开大", RegexOptions.IgnoreCase);
+            return compact;
+        }
+
+        return normalized;
+    }
+
+    public string BuildPromptContext(IReadOnlyList<GlossaryHit> hits)
+    {
+        if (hits.Count == 0)
+        {
+            return "无术语命中。";
+        }
+
+        return string.Join("; ", hits.Select(hit => $"{hit.Source}->{hit.Target}({hit.Category})"));
+    }
+
+    private string? FindFirstTerm(string text)
+    {
+        return FindHits(text).FirstOrDefault(hit => hit.Category.Equals("hero", StringComparison.OrdinalIgnoreCase))?.Target
+            ?? FindHits(text).FirstOrDefault()?.Target;
+    }
+
+    private string? FindFirstByCategory(string text, string category)
+    {
+        return FindHits(text).FirstOrDefault(hit => hit.Category.Equals(category, StringComparison.OrdinalIgnoreCase))?.Target;
+    }
+
+    private static string NormalizeKey(string value)
+    {
+        string lower = value.ToLowerInvariant();
+        lower = Regex.Replace(lower, @"[^\p{L}\p{N}]+", " ");
+        return Regex.Replace(lower, @"\s+", " ").Trim();
+    }
+
+    private sealed class GlossaryFile
+    {
+        public string? Version { get; set; }
+        public List<string>? IgnorePhrases { get; set; }
+        public List<GlossaryEntry>? Entries { get; set; }
+        public List<RewriteRule>? LocalRewrites { get; set; }
+    }
+
+    private sealed class GlossaryEntry
+    {
+        public string? Category { get; set; }
+        public string? ZhCn { get; set; }
+        public List<string>? Terms { get; set; }
+    }
+
+    private sealed class RewriteRule
+    {
+        public string? Pattern { get; set; }
+        public string? ZhCn { get; set; }
+    }
+}
