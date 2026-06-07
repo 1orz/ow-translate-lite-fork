@@ -250,6 +250,13 @@ public partial class MainWindow : Window
     private void ShowOverlay_Click(object sender, RoutedEventArgs e)
     {
         EnsureOverlay();
+        if (!_isRunning && ClickThroughCheck.IsChecked == true)
+        {
+            ClickThroughCheck.IsChecked = false;
+            SaveSettingsFromUi();
+            AddLog("已进入 Overlay 调整模式；拖动顶部横条可移动，拖动右下角可缩放。");
+        }
+
         _overlay?.Show();
         _overlay?.Activate();
     }
