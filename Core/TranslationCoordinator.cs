@@ -169,14 +169,14 @@ public sealed class TranslationCoordinator
         }
         finally
         {
-        foreach (ParsedChatLine line in newLines)
-        {
-            _pendingMessageKeys.Remove(CreateMessageKey(line));
-            RemovePendingSnapshot(CreateSnapshot(line));
-        }
+            foreach (ParsedChatLine line in newLines)
+            {
+                _pendingMessageKeys.Remove(CreateMessageKey(line));
+                RemovePendingSnapshot(CreateSnapshot(line));
+            }
 
-        LogDedupe($"translate-finally released count={newLines.Count}");
-    }
+            LogDedupe($"translate-finally released count={newLines.Count}");
+        }
     }
 
     private bool ResetCycleIfChatStayedHidden()

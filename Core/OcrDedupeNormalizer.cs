@@ -4,42 +4,9 @@ namespace OwTranslateLite.Core;
 
 public static class OcrDedupeNormalizer
 {
-    private static readonly (string From, string To)[] KoreanCorrections =
-    [
-        ("프리틸", "프리딜"),
-        ("프리릴", "프리딜"),
-        ("포리틸", "프리딜"),
-        ("프리털", "프리딜"),
-        ("아무토", "아무도"),
-        ("야무도", "아무도"),
-        ("이무토", "아무도"),
-        ("안보", "안 보"),
-        ("인보", "안 보"),
-        ("교지대", "고지대"),
-        ("헬러", "힐러"),
-        ("힐려", "힐러"),
-        ("헬려", "힐러"),
-        ("족지", "죽지"),
-        ("족저", "죽지"),
-        ("죽저", "죽지"),
-        ("해속", "계속"),
-        ("게속", "계속"),
-        ("좁 모여요", "좀 모여요"),
-        ("종 모여요", "좀 모여요"),
-        ("오론쪽", "오른쪽"),
-        ("으른쪽", "오른쪽"),
-        ("트래이서", "트레이서"),
-        ("트레아서", "트레이서")
-    ];
-
     public static string NormalizeText(string value)
     {
         string normalized = value.ToLowerInvariant();
-        foreach ((string from, string to) in KoreanCorrections)
-        {
-            normalized = normalized.Replace(from, to, StringComparison.Ordinal);
-        }
-
         normalized = Regex.Replace(normalized, @"[^\p{L}\p{N}]+", " ");
         return Regex.Replace(normalized, @"\s+", " ").Trim();
     }
