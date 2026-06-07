@@ -22,6 +22,8 @@ public sealed class TranslationCoordinator
     private static readonly TimeSpan LongRecentDedupeTtl = TimeSpan.FromSeconds(90);
     private const int MaxRecentDedupeItems = 500;
     private const int MaxTailMessagesWithoutAnchor = 2;
+    private const double AnchorScoreThreshold = 0.82;
+    private const double DuplicateTextScoreThreshold = 0.76;
 
     public bool ChatCycleJustReset { get; private set; }
     public bool HasVisibleChat { get; private set; }
@@ -230,78 +232,96 @@ public sealed class TranslationCoordinator
 
     private int FindBestAnchorIndex(IReadOnlyList<VisibleMessageSnapshot> current)
     {
+        int bestIndex = -1;
+        double bestScore = 0;
         for (int currentIndex = current.Count - 1; currentIndex >= 0; currentIndex--)
         {
             VisibleMessageSnapshot currentMessage = current[currentIndex];
             for (int previousIndex = _previousVisibleMessages.Count - 1; previousIndex >= 0; previousIndex--)
             {
-                if (!IsAnchorMatch(currentMessage, _previousVisibleMessages[previousIndex]))
+                double score = GetAnchorScore(current, currentIndex, previousIndex);
+                if (score > bestScore)
                 {
-                    continue;
-                }
-
-                if (HasNeighborSupport(current, currentIndex, previousIndex) || IsStrongAnchor(currentMessage))
-                {
-                    return currentIndex;
+                    bestScore = score;
+                    bestIndex = currentIndex;
                 }
             }
         }
 
+        if (bestIndex >= 0 && bestScore >= AnchorScoreThreshold)
+        {
+            LogDedupe($"anchor best index={bestIndex} score={bestScore:0.###} current={FormatSnapshot(current[bestIndex])}");
+            return bestIndex;
+        }
+
+        LogDedupe($"anchor none bestScore={bestScore:0.###}");
         return -1;
     }
 
-    private bool HasNeighborSupport(IReadOnlyList<VisibleMessageSnapshot> current, int currentIndex, int previousIndex)
+    private double GetAnchorScore(IReadOnlyList<VisibleMessageSnapshot> current, int currentIndex, int previousIndex)
     {
-        bool previousNeighborMatches = currentIndex > 0 &&
-                                       previousIndex > 0 &&
-                                       IsAnchorMatch(current[currentIndex - 1], _previousVisibleMessages[previousIndex - 1]);
-        bool nextNeighborMatches = currentIndex + 1 < current.Count &&
-                                   previousIndex + 1 < _previousVisibleMessages.Count &&
-                                   IsAnchorMatch(current[currentIndex + 1], _previousVisibleMessages[previousIndex + 1]);
-        return previousNeighborMatches || nextNeighborMatches;
+        VisibleMessageSnapshot currentMessage = current[currentIndex];
+        VisibleMessageSnapshot previousMessage = _previousVisibleMessages[previousIndex];
+        if (!OcrDedupeNormalizer.IsSpeakerMatch(currentMessage.NormalizedSpeaker, previousMessage.NormalizedSpeaker))
+        {
+            return 0;
+        }
+
+        double textScore = OcrDedupeNormalizer.TextSimilarityScore(currentMessage.NormalizedText, previousMessage.NormalizedText);
+        if (textScore < DuplicateTextScoreThreshold)
+        {
+            return 0;
+        }
+
+        double score = textScore;
+        if (currentMessage.NormalizedSpeaker == previousMessage.NormalizedSpeaker)
+        {
+            score += 0.04;
+        }
+
+        score += GetNeighborSupportScore(current, currentIndex, previousIndex);
+        if (currentMessage.NormalizedText.Length >= 12)
+        {
+            score += 0.03;
+        }
+
+        return Math.Min(1, score);
     }
 
-    private static bool IsStrongAnchor(VisibleMessageSnapshot message) =>
-        message.NormalizedText.Length >= 12;
+    private double GetNeighborSupportScore(IReadOnlyList<VisibleMessageSnapshot> current, int currentIndex, int previousIndex)
+    {
+        double support = 0;
+        if (currentIndex > 0 && previousIndex > 0)
+        {
+            support += GetLooseNeighborScore(current[currentIndex - 1], _previousVisibleMessages[previousIndex - 1]) * 0.08;
+        }
+
+        if (currentIndex + 1 < current.Count && previousIndex + 1 < _previousVisibleMessages.Count)
+        {
+            support += GetLooseNeighborScore(current[currentIndex + 1], _previousVisibleMessages[previousIndex + 1]) * 0.08;
+        }
+
+        return support;
+    }
+
+    private static double GetLooseNeighborScore(VisibleMessageSnapshot left, VisibleMessageSnapshot right)
+    {
+        if (!OcrDedupeNormalizer.IsSpeakerMatch(left.NormalizedSpeaker, right.NormalizedSpeaker))
+        {
+            return 0;
+        }
+
+        return OcrDedupeNormalizer.TextSimilarityScore(left.NormalizedText, right.NormalizedText);
+    }
 
     private static bool IsAnchorMatch(VisibleMessageSnapshot left, VisibleMessageSnapshot right)
     {
-        if (!string.Equals(left.NormalizedSpeaker, right.NormalizedSpeaker, StringComparison.Ordinal))
+        if (!OcrDedupeNormalizer.IsSpeakerMatch(left.NormalizedSpeaker, right.NormalizedSpeaker))
         {
             return false;
         }
 
-        if (left.NormalizedText == right.NormalizedText)
-        {
-            return true;
-        }
-
-        return IsSimilarText(left.NormalizedText, right.NormalizedText);
-    }
-
-    private static bool IsSimilarText(string left, string right)
-    {
-        if (left.Length < 8 || right.Length < 8)
-        {
-            return false;
-        }
-
-        string shorter = left.Length <= right.Length ? left : right;
-        string longer = left.Length <= right.Length ? right : left;
-        if (longer.Contains(shorter, StringComparison.Ordinal) &&
-            shorter.Length >= Math.Max(8, (int)(longer.Length * 0.65)))
-        {
-            return true;
-        }
-
-        int commonPrefix = 0;
-        int limit = Math.Min(left.Length, right.Length);
-        while (commonPrefix < limit && left[commonPrefix] == right[commonPrefix])
-        {
-            commonPrefix++;
-        }
-
-        return commonPrefix >= Math.Max(8, (int)(limit * 0.75));
+        return OcrDedupeNormalizer.TextSimilarityScore(left.NormalizedText, right.NormalizedText) >= DuplicateTextScoreThreshold;
     }
 
     private void UpdatePreviousVisibleMessages(IReadOnlyList<ParsedChatLine> currentLines)
@@ -429,17 +449,10 @@ public sealed class TranslationCoordinator
         $"{NormalizeSpeakerForHash(line.Speaker)}:{NormalizeForHash(line.SourceText)}";
 
     private static string NormalizeForHash(string value)
-    {
-        string lower = value.ToLowerInvariant();
-        lower = System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", " ");
-        return System.Text.RegularExpressions.Regex.Replace(lower, @"\s+", " ").Trim();
-    }
+        => OcrDedupeNormalizer.NormalizeText(value);
 
     private static string NormalizeSpeakerForHash(string value)
-    {
-        string lower = value.ToLowerInvariant();
-        return System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", "");
-    }
+        => OcrDedupeNormalizer.NormalizeSpeaker(value);
 
     private void LogDedupe(string message)
     {

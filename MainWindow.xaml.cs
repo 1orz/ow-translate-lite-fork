@@ -719,7 +719,7 @@ public partial class MainWindow : Window
         DateTime now = DateTime.Now;
         return _records.Any(existing =>
             now - existing.Timestamp <= DisplayDuplicateWindow &&
-            NormalizeSpeakerForCompare(existing.Speaker) == speaker &&
+            OcrDedupeNormalizer.IsSpeakerMatch(NormalizeSpeakerForCompare(existing.Speaker), speaker) &&
             IsSimilarText(source, NormalizeTextForCompare(existing.SourceText)));
     }
 
@@ -1158,46 +1158,14 @@ public partial class MainWindow : Window
     }
 
     private static string NormalizeSpeakerForCompare(string value)
-    {
-        string lower = value.ToLowerInvariant();
-        return System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", "");
-    }
+        => OcrDedupeNormalizer.NormalizeSpeaker(value);
 
     private static string NormalizeTextForCompare(string value)
-    {
-        string lower = value.ToLowerInvariant();
-        lower = System.Text.RegularExpressions.Regex.Replace(lower, @"[^\p{L}\p{N}]+", " ");
-        return System.Text.RegularExpressions.Regex.Replace(lower, @"\s+", " ").Trim();
-    }
+        => OcrDedupeNormalizer.NormalizeText(value);
 
     private static bool IsSimilarText(string left, string right)
     {
-        if (left == right)
-        {
-            return true;
-        }
-
-        if (left.Length < 8 || right.Length < 8)
-        {
-            return false;
-        }
-
-        string shorter = left.Length <= right.Length ? left : right;
-        string longer = left.Length <= right.Length ? right : left;
-        if (longer.Contains(shorter, StringComparison.Ordinal) &&
-            shorter.Length >= Math.Max(8, (int)(longer.Length * 0.65)))
-        {
-            return true;
-        }
-
-        int commonPrefix = 0;
-        int limit = Math.Min(left.Length, right.Length);
-        while (commonPrefix < limit && left[commonPrefix] == right[commonPrefix])
-        {
-            commonPrefix++;
-        }
-
-        return commonPrefix >= Math.Max(8, (int)(limit * 0.75));
+        return OcrDedupeNormalizer.IsSimilarText(left, right);
     }
 
     private static bool IsFinite(double value) =>
