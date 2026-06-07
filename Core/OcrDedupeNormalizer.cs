@@ -71,7 +71,11 @@ public static class OcrDedupeNormalizer
 
         best = Math.Max(best, TokenOverlapRatio(left, right));
         best = Math.Max(best, CharacterDiceRatio(left, right));
+        best = Math.Max(best, CompactLevenshteinRatio(left, right));
+        best = Math.Max(best, LongestCommonSubsequenceRatio(left, right));
+        best = Math.Max(best, CompactTokenCoverageRatio(left, right));
         best = Math.Max(best, 1.0 - ((double)LevenshteinDistance(left, right) / Math.Max(left.Length, right.Length)));
+        best = Math.Min(1, best + NumericAnchorBonus(left, right));
         return best;
     }
 
@@ -118,10 +122,88 @@ public static class OcrDedupeNormalizer
         return LevenshteinDistance(left, right) <= 1;
     }
 
+    private static double CompactLevenshteinRatio(string left, string right)
+    {
+        string compactLeft = RemoveSpaces(left);
+        string compactRight = RemoveSpaces(right);
+        if (compactLeft.Length < 6 || compactRight.Length < 6)
+        {
+            return 0;
+        }
+
+        int distance = LevenshteinDistance(compactLeft, compactRight);
+        return 1.0 - ((double)distance / Math.Max(compactLeft.Length, compactRight.Length));
+    }
+
+    private static double LongestCommonSubsequenceRatio(string left, string right)
+    {
+        string compactLeft = RemoveSpaces(left);
+        string compactRight = RemoveSpaces(right);
+        if (compactLeft.Length < 6 || compactRight.Length < 6)
+        {
+            return 0;
+        }
+
+        int lcs = LongestCommonSubsequenceLength(compactLeft, compactRight);
+        return (double)lcs / Math.Max(compactLeft.Length, compactRight.Length);
+    }
+
+    private static double CompactTokenCoverageRatio(string left, string right)
+    {
+        string compactLeft = RemoveSpaces(left);
+        string compactRight = RemoveSpaces(right);
+        string[] leftTokens = left.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        string[] rightTokens = right.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        int useful = 0;
+        int covered = 0;
+
+        foreach (string token in leftTokens.Concat(rightTokens))
+        {
+            if (token.Length < 2 || Regex.IsMatch(token, @"^\d+$"))
+            {
+                continue;
+            }
+
+            useful++;
+            string other = leftTokens.Contains(token, StringComparer.Ordinal) ? compactRight : compactLeft;
+            if (other.Contains(token, StringComparison.Ordinal))
+            {
+                covered++;
+            }
+        }
+
+        return useful == 0 ? 0 : (double)covered / useful;
+    }
+
+    private static double NumericAnchorBonus(string left, string right)
+    {
+        HashSet<string> leftNumbers = ExtractNumericAnchors(left);
+        HashSet<string> rightNumbers = ExtractNumericAnchors(right);
+        if (leftNumbers.Count == 0 || rightNumbers.Count == 0)
+        {
+            return 0;
+        }
+
+        int shared = leftNumbers.Count(value => rightNumbers.Contains(value));
+        return shared == 0 ? 0 : Math.Min(0.12, shared * 0.06);
+    }
+
+    private static HashSet<string> ExtractNumericAnchors(string value)
+    {
+        HashSet<string> anchors = new(StringComparer.Ordinal);
+        foreach (Match match in Regex.Matches(value, @"\d+\s*(?:초|s|sec|秒)?", RegexOptions.IgnoreCase))
+        {
+            string anchor = Regex.Replace(match.Value.ToLowerInvariant(), @"\s+", "");
+            anchors.Add(anchor);
+        }
+
+        return anchors;
+    }
+
     private static double CharacterDiceRatio(string left, string right)
     {
-        string compactLeft = left.Replace(" ", "", StringComparison.Ordinal);
-        string compactRight = right.Replace(" ", "", StringComparison.Ordinal);
+        string compactLeft = RemoveSpaces(left);
+        string compactRight = RemoveSpaces(right);
         if (compactLeft.Length < 2 || compactRight.Length < 2)
         {
             return 0;
@@ -152,6 +234,30 @@ public static class OcrDedupeNormalizer
 
         return counts;
     }
+
+    private static int LongestCommonSubsequenceLength(string left, string right)
+    {
+        int[] previous = new int[right.Length + 1];
+        int[] current = new int[right.Length + 1];
+
+        for (int i = 1; i <= left.Length; i++)
+        {
+            Array.Clear(current);
+            for (int j = 1; j <= right.Length; j++)
+            {
+                current[j] = left[i - 1] == right[j - 1]
+                    ? previous[j - 1] + 1
+                    : Math.Max(previous[j], current[j - 1]);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return previous[right.Length];
+    }
+
+    private static string RemoveSpaces(string value) =>
+        value.Replace(" ", "", StringComparison.Ordinal);
 
     private static int LevenshteinDistance(string left, string right)
     {
