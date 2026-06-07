@@ -5,10 +5,11 @@ Lightweight Overwatch 2 real-time OCR translation overlay for Chinese players.
 ## Scope
 
 - Screen-region OCR for OW chat/subtitle areas.
-- OCR engines: OneOCR and Windows OCR.
-- Translation providers: DeepSeek, OpenAI-compatible chat completions API, plus `Local Rules` for offline rule smoke tests.
+- OCR engine: OneOCR.
+- Translation providers: DeepSeek and OpenAI-compatible chat completions API.
+- `Local Rules` is kept only as a beta/offline smoke-test mode, not as the product translation path.
 - OW-specific filtering: translates player chat lines and ignores Chinese system/UI hints.
-- OW glossary: heroes, abilities, common English/Japanese/Korean/Russian aliases, Chinese community slang.
+- OW glossary: heroes, abilities, maps, modes, common English/Japanese/Korean aliases, and Chinese community slang.
 - Transparent topmost overlay with optional click-through.
 
 ## Build
@@ -16,20 +17,19 @@ Lightweight Overwatch 2 real-time OCR translation overlay for Chinese players.
 Use the local SDK installed at `E:\rstgametranslation\.dotnet`:
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" build OwTranslateLite.csproj
-& "E:\rstgametranslation\.dotnet\dotnet.exe" publish OwTranslateLite.csproj -c Release
+& "E:\rstgametranslation\.dotnet\dotnet.exe" build OwTranslateLite.csproj -c Release
 ```
 
-The release executable is expected under:
+Publish beta packages only when preparing a tester build:
 
-```text
-E:\rstgametranslation\ow-translate-lite\app\win-x64\publish\OWTranslatorLite.exe
+```powershell
+& "E:\rstgametranslation\.dotnet\dotnet.exe" publish OwTranslateLite.csproj -c Release -o E:\rstgametranslation\ow-translate-lite\dist\OWTranslatorLite-vX.Y.Z-portable-win-x64
 ```
 
 ## First Test
 
 1. Run the executable.
-2. For translation-quality tests, use `DeepSeek`, set API URL to `https://api.deepseek.com`, click `获取模型`, and select `deepseek-v4-flash` or `deepseek-v4-pro`.
+2. For translation-quality tests, use `DeepSeek`, set API URL to `https://api.deepseek.com`, click `获取模型`, and select `deepseek-v4-flash`.
 3. For no-network smoke tests only, use provider `Local Rules`.
 4. Open Notepad and type OW chat-like lines:
 

@@ -5,7 +5,7 @@
 ```text
 selected region
   -> GDI screenshot
-  -> OneOCR or Windows OCR
+  -> OneOCR
   -> OW OCR cleanup
   -> OW chat parser
   -> duplicate suppression
@@ -22,7 +22,7 @@ selected region
 - `Core/OwChatParser.cs`: player-chat extraction and Chinese UI filtering.
 - `Core/TranslationCoordinator.cs`: capture/OCR/parse/translate loop and duplicate suppression.
 - `Ocr/OneOcrEngine.cs`: native OneOCR wrapper.
-- `Ocr/WindowsOcrEngine.cs`: Windows Media OCR wrapper.
+- `Ocr/WindowsOcrEngine.cs`: legacy/non-default Windows OCR wrapper; OneOCR is the maintained path.
 - `Translation/OpenAICompatibleTranslationProvider.cs`: DeepSeek and OpenAI-compatible API.
 - `Overlay/OverlayWindow.xaml`: topmost translation overlay.
 - `AreaSelectorWindow.xaml`: capture region selector.
@@ -30,6 +30,8 @@ selected region
 ## Next Iterations
 
 - Add screenshot fixture tests for real OW chat images.
-- Add per-language OCR presets for EN/JA/KO/RU mixed chat.
+- Continue improving OCR chunk merge and ordered-anchor dedupe.
+- Add per-language OCR presets for EN/JA/KO chat.
 - Add WGC capture for cases where GDI cannot capture exclusive/fullscreen content.
-- Add import/export for glossary overrides.
+- Encrypt the local API key with DPAPI or the Windows credential store.
+- Hide or remove beta-only test entries and `Local Rules` before a formal release.
