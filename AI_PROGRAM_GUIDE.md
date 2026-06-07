@@ -1,0 +1,134 @@
+# OW Translator Lite - AI 维护指导文档
+
+本文档写给后续接手本项目的 AI/维护者。目标是避免重复摸索、避免把项目改回通用翻译器，并保留当前 beta 测试阶段的关键约束。
+
+## 项目定位
+
+- 本项目是基于 `thanhkeke97/RSTGameTranslation` 思路重做的 OW 专用实时竞技翻译工具。
+- 当前目标不是完整通用翻译器，而是面向《守望先锋》外服对局聊天的轻量 Windows OCR 翻译 overlay。
+- 默认目标语言固定为简体中文。
+- 当前重点语言只维护英语、日语、韩语；其他语言不要主动扩展，除非用户明确要求。
+- 语音、TTS、剪贴板翻译、漫画模式、多 OCR 服务、多翻译商等通用功能已裁剪，不要随手加回。
+
+## 当前技术栈
+
+- UI：WPF / .NET 9 / Windows x64。
+- 项目文件：`OwTranslateLite.csproj`。
+- OCR：当前固定 OneOCR，WinOCR 不可用，不要作为默认路径恢复。
+- 翻译：
+  - `DeepSeek` 和 `OpenAI Compatible` 走 OpenAI-compatible chat completions。
+  - `Local Rules` 只用于测试本地规则，不代表正式翻译质量。
+- Overlay：独立 WPF 窗口，支持透明背景、鼠标穿透、拖动、调整大小、滚动历史。
+- 用户数据目录：`%AppData%\OWTranslatorLite`。
+
+## 重要目录
+
+- `Core/`：设置、术语表、消息解析、去重、翻译协调逻辑。
+- `Ocr/`：截图、OCR 引擎和 OW 聊天图像预处理。
+- `Overlay/`：翻译 overlay 窗口。
+- `Translation/`：OpenAI-compatible API 请求、模型列表获取、本地规则翻译。
+- `Resources/OwGlossary.zh-CN.json`：OW 术语表。
+- `Docs/`：架构、测试说明、历史决策。
+- `dist/`：发布产物，已在 `.gitignore`，不要提交。
+- `app/`：本地 build 输出，已在 `.gitignore`，不要提交。
+
+## 当前核心逻辑
+
+### OCR 与消息解析
+
+- 框选区域应完整包含 OW 左侧聊天文本框里的 `[玩家名]：正文`。
+- 系统提示通常没有 `[player]：` 格式，应和玩家消息分开处理。
+- OW 聊天会自动消失，但打开聊天窗口可看到历史；overlay 历史不因 OCR 暂时无字而清空。
+- 当前 OCR 源语言选择是识别语言，不是目标语言：
+  - 自动：`auto`
+  - 英语：`en`
+  - 日语：`ja`
+  - 韩语：`ko`
+
+### 去重策略
+
+- 维护有顺序的聊天消息列表，严格以玩家单条消息为翻译单元。
+- 以 `[玩家名]：text` 作为玩家消息边界，不把同一个玩家连续多句话合成一条。
+- 通过有序锚点和相似文本判断新增消息，抵抗 OCR 把同一行切块或轻微识别错误。
+- 翻译请求有异步队列和上限，网络高延迟时会丢弃过旧队列，避免无限堆积。
+- Overlay 最多保留最近 50 条翻译记录，方便用户滚动查看，不永久保存。
+
+### Overlay 行为
+
+- 点击“暂停”应隐藏 overlay，但不清空历史。
+- OCR 没文字时，overlay 可在翻译完成后继续显示约 5-6 秒，然后隐藏；隐藏不等于清空。
+- 用户拖动或调整 overlay 大小后，应自动保存位置和尺寸。
+- 透明度控制的是黑色背景透明度，文字必须保持清晰。
+- 鼠标穿透关闭后，用户应能拖动、调整大小和滚动 overlay。
+
+## Beta 测试模块
+
+当前 beta 版程序内有“Beta 测试”入口：
+
+- 打开数据目录。
+- 打开日志。
+- 导出诊断。
+- 清除本机数据。
+
+这些入口只为小范围测试排错服务，完整版可以移除。导出诊断必须脱敏 API Key，只能记录是否已配置。
+
+相关文件：
+
+- `settings.json`：用户设置，含 API Key，当前仍为明文；以后要改为 DPAPI 或系统凭据库。
+- `runtime.log`：程序内运行日志。
+- `crash.log`：未捕获异常日志。
+- `diagnostics-*.txt`：用户点击导出诊断生成的脱敏诊断文件。
+
+## API 与模型
+
+- DeepSeek 默认 API URL：`https://api.deepseek.com`。
+- 当前默认模型：`deepseek-v4-flash`。
+- 模型下拉框应优先通过“获取模型”向 `/models` 获取，降低用户手填错误。
+- 如果 DeepSeek 文档或模型名可能变化，必须联网查最新官方文档后再更新默认值。
+- API Key 不应写入诊断文件、日志或崩溃日志。
+
+## 构建与发布
+
+推荐使用仓库内的本地 SDK：
+
+```powershell
+E:\rstgametranslation\.dotnet\dotnet.exe build OwTranslateLite.csproj -c Release
+```
+
+发布 beta 包：
+
+```powershell
+E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Release -o E:\rstgametranslation\ow-translate-lite\dist\OWTranslatorLite-vX.Y.Z-portable-win-x64
+```
+
+发布后将对应 `Docs/BetaTest-*.md` 复制为包内 `README-BETA.md`，再压缩 `dist` 下的发布目录。
+
+注意：
+
+- 不要每次小修都打包，用户要求确认测试完成后再最终打包时再做。
+- 如果是给测试者的新 beta，包名要带清晰版本号。
+- 自包含发布会带很多 .NET runtime DLL，这是正常的；不要手删不认识的 DLL。
+
+## Git 维护约定
+
+- 修改前先 `git status --short`。
+- 工作树若已有用户改动，不要回滚。
+- 每组完成的改动可做本地 commit，作为恢复点。
+- 不要 push、pull、加 remote，除非用户明确要求。
+- `dist/`、`app/`、`obj/` 不应提交。
+
+## 常见风险
+
+- 新机器选择语言或模型闪退：优先看 `crash.log` 和 overlay 坐标是否为 NaN/Infinity。
+- 翻译重复：优先检查 OCR 是否把同一行切块、玩家名是否被识别变化、锚点匹配是否失效。
+- 韩语/日语识别差：优先让用户把 OCR 源语言固定为韩语或日语，再考虑图像预处理。
+- 翻译不动：检查 API URL、API Key、模型、请求超时、网络延迟和队列是否积压。
+- Overlay 位置不保存：检查 `OverlayLeft/Top/Width/Height` 是否写入 `settings.json`，以及应用设置时是否触发了错误保存。
+
+## 后续优先级
+
+1. 收集 beta2 诊断日志，优先解决测试者机器上的闪退和无响应。
+2. 继续增强 OCR 切块合并和有序锚点去重。
+3. 加密本地 API Key。
+4. 维护英语、日语、韩语 OW 术语和常见聊天表达。
+5. beta 稳定后再考虑裁掉测试入口、整理发布包结构、做正式版本说明。
