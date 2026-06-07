@@ -1,6 +1,6 @@
-# OW Translator Lite - AI 维护指导文档
+# OW Translator Lite - AGENTS 维护指南
 
-本文档写给后续接手本项目的 AI/维护者。目标是避免重复摸索、避免把项目改回通用翻译器，并保留当前 beta 测试阶段的关键约束。
+本文档写给后续接手本项目的 AI agent/维护者。目标是避免重复摸索、避免把项目改回通用翻译器，并保留当前 beta 测试阶段的关键约束。
 
 ## 项目定位
 
@@ -9,6 +9,7 @@
 - 默认目标语言固定为简体中文。
 - 当前重点语言只维护英语、日语、韩语；其他语言不要主动扩展，除非用户明确要求。
 - 语音、TTS、剪贴板翻译、漫画模式、多 OCR 服务、多翻译商等通用功能已裁剪，不要随手加回。
+- `Local Rules` 只是 beta 阶段的离线冒烟测试模式，不是正式产品能力。后续正式版应移除或隐藏，不要继续把主要翻译质量建立在本地规则上。
 
 ## 当前技术栈
 
@@ -17,7 +18,7 @@
 - OCR：当前固定 OneOCR，WinOCR 不可用，不要作为默认路径恢复。
 - 翻译：
   - `DeepSeek` 和 `OpenAI Compatible` 走 OpenAI-compatible chat completions。
-  - `Local Rules` 只用于测试本地规则，不代表正式翻译质量。
+  - `Local Rules` 只用于测试本地规则，不代表正式翻译质量，正式版不应保留为主路径。
 - Overlay：独立 WPF 窗口，支持透明背景、鼠标穿透、拖动、调整大小、滚动历史。
 - 用户数据目录：`%AppData%\OWTranslatorLite`。
 
@@ -31,6 +32,32 @@
 - `Docs/`：架构、测试说明、历史决策。
 - `dist/`：发布产物，已在 `.gitignore`，不要提交。
 - `app/`：本地 build 输出，已在 `.gitignore`，不要提交。
+
+## 术语表维护规则
+
+- 术语表文件：`Resources/OwGlossary.zh-CN.json`。
+- 当前词库版本：`2026.06.08-beta3-glossary-v3`。
+- 当前覆盖规模：约 302 个 entries、1672 个 terms/aliases。
+- 术语表主要服务 API prompt 的术语命中和中文锁定，不是为了继续扩大 `Local Rules` 的本地翻译范围。
+- 只维护 OW 专用内容：
+  - 英雄名、英雄简称和玩家常用叫法。
+  - 技能、大招、常见技能简称和“技能交了/没技能”类 callout。
+  - 地图、模式、角色、阵容类型。
+  - 英语、日语、韩语竞技聊天常见短句。
+  - 稳定的 OW 玩家黑话，例如 C9、stagger、peel、poke、dive、brawl、nano blade、Pharmercy 等。
+- 不要把普通自然语言词典塞进术语表。普通聊天翻译应交给 DeepSeek/OpenAI-compatible API。
+- 不要根据单次 OCR 测试样例硬编码玩家名或错字。只有 OW 术语、技能名、地图名、稳定社区叫法适合进入词库。
+- 新增 alias 时要避免过短、过泛的词污染翻译。例如 `one`、`push`、`tp`、`fade` 这类词必须接受上下文歧义，必要时宁可不加。
+- 新增词库后必须至少做：
+  - JSON 解析校验。
+  - 重复 alias 检查。
+  - `dotnet build OwTranslateLite.csproj -c Release`。
+- 推荐来源优先级：
+  1. Blizzard 官方 OW 英雄、地图、模式页面。
+  2. Overwatch Wiki/Fandom 的英雄、技能、地图、术语页面。
+  3. Reddit、OverwatchUniversity、论坛、玩家社区中的高频通用叫法。
+  4. 用户 beta 测试日志中反复出现、且明显不是个例的稳定叫法。
+- 维护词库时要同时考虑英语、日语、韩语。当前不主动扩展俄语、法语、德语、西语等语言。
 
 ## 当前核心逻辑
 
@@ -110,6 +137,7 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 - 不要每次小修都打包，用户要求确认测试完成后再最终打包时再做。
 - 如果是给测试者的新 beta，包名要带清晰版本号。
 - 自包含发布会带很多 .NET runtime DLL，这是正常的；不要手删不认识的 DLL。
+- 词库、文档、日志类小改默认只 build 验证，不自动 publish/zip，除非用户明确要求发布 beta 包。
 
 ## Git 维护约定
 
@@ -118,6 +146,7 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 - 每组完成的改动可做本地 commit，作为恢复点。
 - 不要 push、pull、加 remote，除非用户明确要求。
 - `dist/`、`app/`、`obj/` 不应提交。
+- 文档和词库变更也要纳入 git 管理；完成后确认 `git status --short` 干净。
 
 ## 常见风险
 
@@ -133,5 +162,5 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 2. 继续增强 OCR 切块合并和有序锚点去重。
 3. 加密本地 API Key。
 4. 维护英语、日语、韩语 OW 术语和常见聊天表达。
-5. 暂不引入大体积本地翻译模型；竞技实时体验优先使用 Local Rules + DeepSeek/API + 缓存。
-6. beta 稳定后再考虑裁掉测试入口、整理发布包结构、做正式版本说明。
+5. 暂不引入大体积本地翻译模型；竞技实时体验优先使用 DeepSeek/API + 术语表 + 缓存。
+6. beta 稳定后裁掉测试入口，移除或隐藏 `Local Rules`，整理发布包结构，做正式版本说明。
