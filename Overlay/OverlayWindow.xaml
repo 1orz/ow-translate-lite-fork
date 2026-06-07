@@ -115,6 +115,7 @@
 
             <primitives:Thumb x:Name="ResizeGrip"
                               Grid.RowSpan="3"
+                              Panel.ZIndex="20"
                               Width="22"
                               Height="22"
                               HorizontalAlignment="Right"
@@ -136,8 +137,9 @@
 
             <Border x:Name="ReplyInputPanel"
                     Grid.Row="2"
+                    Panel.ZIndex="10"
                     Visibility="Visible"
-                    Margin="0,10,0,0"
+                    Margin="0,10,30,0"
                     Padding="0"
                     Background="Transparent"
                     BorderThickness="0">
