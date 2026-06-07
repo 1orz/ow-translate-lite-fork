@@ -33,7 +33,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Text="OW Translator Lite Quick Start" FontSize="26" FontWeight="Bold"/>
-            <TextBlock Text="建议按下面顺序完成配置。测试版 API Key 会保存在本机配置文件中，请不要把自己的 settings.json 一起分发。" Foreground="#AFC6B6" Margin="0,8,0,0"/>
+            <TextBlock Text="建议按下面顺序完成配置。API Key 会用当前 Windows 用户的 DPAPI 保护保存；仍不要把自己的 settings.json 一起分发。" Foreground="#AFC6B6" Margin="0,8,0,0"/>
         </StackPanel>
 
         <Border Grid.Row="1" Background="#151A1D" BorderBrush="#334047" BorderThickness="1" Padding="16">
@@ -49,8 +49,8 @@
                     <TextBlock Text="在本程序里选择 DeepSeek，API URL 填 https://api.deepseek.com，把 API Key 粘贴到 API Key 输入框。"/>
                     <TextBlock Text="点击“获取模型”，从模型列表里选择 deepseek-v4-flash；如果无法获取模型，可先手动保留默认模型名。"/>
 
-                    <TextBlock Text="3. 选择 OCR 源语言" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
-                    <TextBlock Text="当前固定使用 OneOCR。源语言不是目标语言，输出始终是简体中文。韩服/韩语聊天优先选择“韩语”，英语选择“英语”，日语选择“日语”。混合语言再尝试“自动”。"/>
+                    <TextBlock Text="3. 确认 OCR 识别模式" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
+                    <TextBlock Text="当前固定使用本地 OneOCR 自动识别，程序不会强制指定英语、日语或韩语。输出目标始终是简体中文。"/>
 
                     <TextBlock Text="4. 框选聊天区域" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
                     <TextBlock Text="点击“选择聊天区域”，框选 OW 左边的消息文本框部分即可。需要完整包含玩家消息文本，尤其是 [玩家名]：正文 这一整行。"/>
@@ -61,7 +61,7 @@
                     <TextBlock Text="透明度只影响黑色背景，不会让字体变糊。翻译框会保留最近 50 条翻译，OCR 没文字后会延迟隐藏但不清空历史。"/>
 
                     <TextBlock Text="6. 开始测试" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,6"/>
-                    <TextBlock Text="所有配置都会自动保存并立即应用，确认 API、模型、OCR 源语言、聊天区域和翻译框位置后，点击“开始”。暂停会停止识别并隐藏翻译框，但不会清空历史；只有“清空”按钮会清空主日志和翻译框历史。"/>
+                    <TextBlock Text="所有配置都会自动保存并立即应用，确认 API、模型、聊天区域和翻译框位置后，点击“开始”。暂停会停止识别并隐藏翻译框，但不会清空历史；只有“清空”按钮会清空主日志和翻译框历史。"/>
                     <TextBlock Text="如果出现重复，优先检查是否框选过大；如果漏字，稍微扩大聊天框选区域。当前 OneOCR 自动识别，不支持强制指定源语言。"/>
                 </StackPanel>
             </ScrollViewer>

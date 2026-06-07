@@ -10,6 +10,8 @@ Lightweight Overwatch 2 real-time OCR translation overlay for Chinese players.
 - OW-specific filtering: translates player chat lines and ignores Chinese system/UI hints.
 - OW glossary: heroes, abilities, maps, modes, common English/Japanese/Korean aliases, and Chinese community slang.
 - Transparent topmost overlay with optional click-through.
+- Reply helper: optional overlay input bar translates Chinese replies to English/Japanese/Korean and copies to clipboard.
+- User API Key is stored through Windows DPAPI as `apiKeyProtected`.
 
 ## Build
 
@@ -48,6 +50,16 @@ Publish beta packages only when preparing a tester build:
 - The target language dropdown supports Auto, English, Japanese, and Korean. Auto uses recent OCR chat language and falls back to English.
 - After Enter, the input releases focus and restores click-through behavior.
 - Optional reply hotkeys can be enabled in the main window; they are off by default.
+- The input bar can be hidden from the main window; hotkey mode can still show it temporarily.
+
+## Local Tools
+
+```powershell
+& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\OcrPreprocessLab\OcrPreprocessLab.csproj -c Release
+& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\GlossaryValidator\GlossaryValidator.csproj -c Release
+```
+
+`OcrPreprocessLab` compares OW chat preprocessing modes against local screenshots. `GlossaryValidator` checks the OW glossary for JSON errors, empty targets, duplicate aliases, and short alias risks.
 
 ## Git
 

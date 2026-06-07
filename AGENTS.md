@@ -100,7 +100,7 @@
 
 相关文件：
 
-- `settings.json`：用户设置，含 API Key，当前仍为明文；以后要改为 DPAPI 或系统凭据库。
+- `settings.json`：用户设置；API Key 通过 Windows DPAPI 保存为 `apiKeyProtected`，不要记录或分发明文。
 - `runtime.log`：程序内运行日志。
 - `crash.log`：未捕获异常日志。
 - `diagnostics-*.txt`：用户点击导出诊断生成的脱敏诊断文件。
@@ -133,7 +133,7 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 
 - 不要每次小修都打包，用户要求确认测试完成后再最终打包时再做。
 - 如果是给测试者的新 beta，包名要带清晰版本号。
-- 自包含发布会带很多 .NET runtime DLL，这是正常的；不要手删不认识的 DLL。
+- 自包含发布会带很多 .NET runtime DLL，这是正常的；不要手删不认识的 DLL，也不要随意移动 .NET host 依赖。OneOCR、Resources、UI 候选资源保持分目录。
 - 词库、文档、日志类小改默认只 build 验证，不自动 publish/zip，除非用户明确要求发布 beta 包。
 
 ## Git 维护约定
@@ -157,7 +157,7 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 
 1. 收集 beta2 诊断日志，优先解决测试者机器上的闪退和无响应。
 2. 继续增强 OCR 切块合并和有序锚点去重。
-3. 加密本地 API Key。
+3. 继续验证 API Key DPAPI 迁移和异常恢复路径。
 4. 维护英语、日语、韩语 OW 术语和常见聊天表达。
 5. 暂不引入大体积本地翻译模型；竞技实时体验优先使用 DeepSeek/API + 术语表 + 缓存。
 6. beta 稳定后裁掉测试入口，整理发布包结构，做正式版本说明。
