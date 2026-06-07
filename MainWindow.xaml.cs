@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private TranslationCoordinator _coordinator = null!;
     private CancellationTokenSource? _loopCts;
     private CancellationTokenSource? _replyTranslationCts;
+    private CancellationTokenSource? _fetchModelsCts;
     private readonly OcrEngineManager _ocrEngineManager = new();
     private readonly Queue<ParsedChatLine> _translationQueue = [];
     private readonly object _translationQueueLock = new();
@@ -87,6 +88,7 @@ public partial class MainWindow : Window
         ExitReplyMode();
         _replyHotKey.Dispose();
         _replyTranslationCts?.Cancel();
+        _fetchModelsCts?.Cancel();
         StopLoop(hideOverlay: false, clearOverlay: false);
         _ocrEngineManager.Dispose();
         SaveSettingsFromUi();
@@ -415,12 +417,16 @@ public partial class MainWindow : Window
         }
 
         FetchModelsButton.IsEnabled = false;
+        _fetchModelsCts?.Cancel();
+        _fetchModelsCts?.Dispose();
+        _fetchModelsCts = new CancellationTokenSource();
+        CancellationTokenSource fetchCts = _fetchModelsCts;
         try
         {
             AddLog("正在获取模型列表...");
             IReadOnlyList<string> models = await OpenAICompatibleTranslationProvider.FetchModelIdsAsync(
                 _config.Settings,
-                CancellationToken.None);
+                fetchCts.Token);
 
             if (models.Count == 0)
             {
@@ -441,12 +447,22 @@ public partial class MainWindow : Window
             SaveSettingsFromUi();
             AddLog($"已获取 {models.Count} 个模型。");
         }
+        catch (OperationCanceledException) when (fetchCts.IsCancellationRequested)
+        {
+            AddLog("获取模型已取消。");
+        }
         catch (Exception ex)
         {
             AddLog($"获取模型失败：{ex.Message}");
         }
         finally
         {
+            if (ReferenceEquals(_fetchModelsCts, fetchCts))
+            {
+                _fetchModelsCts.Dispose();
+                _fetchModelsCts = null;
+            }
+
             FetchModelsButton.IsEnabled = true;
         }
     }
