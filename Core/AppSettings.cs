@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Text.Json.Serialization;
 
 namespace OwTranslateLite.Core;
 
@@ -10,7 +11,12 @@ public sealed class AppSettings
     public string OcrLanguage { get; set; } = "auto";
     public string TranslationProvider { get; set; } = "DeepSeek";
     public string ApiUrl { get; set; } = "https://api.deepseek.com";
+    [JsonIgnore]
     public string ApiKey { get; set; } = "";
+    public string ApiKeyProtected { get; set; } = "";
+    [JsonPropertyName("apiKey")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LegacyPlainTextApiKey { get; set; }
     public string Model { get; set; } = "deepseek-v4-flash";
     public string ReplyTargetLanguage { get; set; } = "auto";
     public bool EnableReplyHotkey { get; set; }

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace OwTranslateLite.Core;
 
@@ -9,7 +10,8 @@ public sealed class ConfigStore
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     public static string AppDirectory { get; } =
@@ -35,6 +37,10 @@ public sealed class ConfigStore
         {
             string json = File.ReadAllText(SettingsPath, Encoding.UTF8);
             Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            if (SettingsMigrator.MigrateAfterLoad(Settings).Changed)
+            {
+                Save();
+            }
         }
         catch
         {
@@ -46,6 +52,7 @@ public sealed class ConfigStore
     public void Save()
     {
         Directory.CreateDirectory(AppDirectory);
+        SettingsMigrator.PrepareForSave(Settings);
         string json = JsonSerializer.Serialize(Settings, JsonOptions);
         File.WriteAllText(SettingsPath, json, new UTF8Encoding(false));
     }
