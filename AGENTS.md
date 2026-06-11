@@ -148,11 +148,12 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 
 - 修改前先 `git status --short`。
 - 工作树若已有用户改动，不要回滚。
-- 每组完成的改动可做本地 commit，作为恢复点。
+- 代码、配置、词库或较大规模文档整理完成后，可做本地 commit 作为恢复点。
+- 仅新增/更新一份小型分析报告、临时说明或轻量文档时，默认不用自动 commit；除非用户明确要求，或该文档会作为正式发布/维护材料长期保留。
 - 不要 push、pull、加 remote，除非用户明确要求。
 - `dist/`、`app/`、`obj/` 不应提交。
 - `captured-screenshots/`、`ow-screenshot/`、`Docs/ocr-lab-output/` 是本地 OCR 实验数据，不应提交。
-- 文档和词库变更也要纳入 git 管理；完成后确认 `git status --short` 干净。
+- 词库变更必须纳入 git 管理；文档变更按规模和用途决定是否提交。完成后向用户说明是否留下未提交改动。
 
 ## 常见风险
 
