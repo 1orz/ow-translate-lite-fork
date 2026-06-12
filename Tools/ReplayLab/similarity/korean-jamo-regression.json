@@ -68,5 +68,57 @@
       "right": "바다",
       "expectedMatch": false
     }
+  ],
+  "parserCases": [
+    {
+      "id": "hangul-with-cjk-ocr-noise-kept",
+      "lineText": "[Reverieach]: 힐 必要해",
+      "expectedMessages": [
+        {
+          "speaker": "Reverieach",
+          "sourceText": "힐 必要해"
+        }
+      ]
+    },
+    {
+      "id": "pure-chinese-system-skipped",
+      "lineText": "[Reverieach]: 玩家已加入队伍",
+      "expectedMessages": []
+    },
+    {
+      "id": "japanese-kept",
+      "lineText": "[Reverieach]: こんにちは",
+      "expectedMessages": [
+        {
+          "speaker": "Reverieach",
+          "sourceText": "こんにちは"
+        }
+      ]
+    },
+    {
+      "id": "english-kept",
+      "lineText": "[Reverieach]: go left",
+      "expectedMessages": [
+        {
+          "speaker": "Reverieach",
+          "sourceText": "go left"
+        }
+      ]
+    },
+    {
+      "id": "hangul-dominates-cjk-kept",
+      "lineText": "[Reverieach]: 궁극기 准备",
+      "expectedMessages": [
+        {
+          "speaker": "Reverieach",
+          "sourceText": "궁극기 准备"
+        }
+      ]
+    },
+    {
+      "id": "chinese-dominant-no-hangul-skipped",
+      "lineText": "[Reverieach]: 比赛开始",
+      "expectedMessages": []
+    }
   ]
 }

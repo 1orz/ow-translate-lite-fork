@@ -65,17 +65,74 @@ public sealed class OwChatParser
             return true;
         }
 
-        if (Regex.IsMatch(message, @"^[\u4e00-\u9fff\s，。！？、：；（）《》0-9a-zA-Z#_-]+$") &&
-            Regex.Matches(message, @"[\u4e00-\u9fff]").Count >= Math.Max(2, message.Length / 3))
+        ScriptCounts scripts = CountScripts(message);
+        if (scripts.Hangul > 0)
+        {
+            return false;
+        }
+
+        if (scripts.Kana > 0)
+        {
+            return false;
+        }
+
+        if (scripts.Cjk > 0 &&
+            scripts.Cjk >= Math.Max(2, scripts.TotalLetters / 2))
         {
             return true;
         }
 
-        if (!Regex.IsMatch(message, @"[A-Za-zぁ-んァ-ン가-힣]"))
+        if (scripts.Latin > 0)
+        {
+            return false;
+        }
+
+        if (scripts.Cjk > 0)
+        {
+            return true;
+        }
+
+        if (scripts.TotalLetters == 0)
         {
             return true;
         }
 
         return false;
+    }
+
+    private static ScriptCounts CountScripts(string message)
+    {
+        int hangul = 0;
+        int kana = 0;
+        int latin = 0;
+        int cjk = 0;
+        foreach (char ch in message)
+        {
+            if (ch is >= '\uAC00' and <= '\uD7AF' ||
+                ch is >= '\u1100' and <= '\u11FF' ||
+                ch is >= '\u3130' and <= '\u318F')
+            {
+                hangul++;
+            }
+            else if (ch is >= '\u3040' and <= '\u30FF')
+            {
+                kana++;
+            }
+            else if (ch is >= 'A' and <= 'Z' or >= 'a' and <= 'z')
+            {
+                latin++;
+            }
+            else if (ch is >= '\u4E00' and <= '\u9FFF')
+            {
+                cjk++;
+            }
+        }
+
+        return new ScriptCounts(hangul, kana, latin, cjk);
+    }
+
+    private sealed record ScriptCounts(int Hangul, int Kana, int Latin, int Cjk)
+    {
+        public int TotalLetters => Hangul + Kana + Latin + Cjk;
     }
 }

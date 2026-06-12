@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.IO;
+using System.Windows;
 using OwTranslateLite.Core;
 
 Console.OutputEncoding = Encoding.UTF8;
@@ -51,7 +52,25 @@ if (args.Length >= 2 && string.Equals(args[0], "--similarity", StringComparison.
         }
     }
 
-    Console.WriteLine($"Similarity regression: cases={set.TextCases.Count + set.SpeakerCases.Count}, failures={failures}");
+    OwChatParser regressionParser = new(OwGlossaryService.LoadDefault());
+    foreach (ParserCase item in set.ParserCases ?? Array.Empty<ParserCase>())
+    {
+        IReadOnlyList<ParsedChatLine> parsed = regressionParser.Parse([new OcrTextLine(item.LineText, new Rect(0, 0, 400, 24))]);
+        IReadOnlyList<string> expectedKeys = item.ExpectedMessages.Select(ReplayKey.MessageKey).ToArray();
+        IReadOnlyList<string> actualKeys = parsed
+            .Select(static line => new ExpectedChatMessage(line.Speaker, line.SourceText))
+            .Select(ReplayKey.MessageKey)
+            .ToArray();
+        bool passed = expectedKeys.SequenceEqual(actualKeys, StringComparer.Ordinal);
+        Console.WriteLine($"{(passed ? "PASS" : "FAIL")} parser {item.Id}: parsed={parsed.Count}");
+        if (!passed)
+        {
+            failures++;
+        }
+    }
+
+    int parserCount = set.ParserCases?.Count ?? 0;
+    Console.WriteLine($"Similarity regression: cases={set.TextCases.Count + set.SpeakerCases.Count + parserCount}, failures={failures}");
     Environment.ExitCode = failures == 0 ? 0 : 1;
     return;
 }
@@ -362,7 +381,8 @@ public static class ReplayKey
 
 public sealed record SimilarityRegressionSet(
     IReadOnlyList<SimilarityCase> TextCases,
-    IReadOnlyList<SpeakerMatchCase> SpeakerCases);
+    IReadOnlyList<SpeakerMatchCase> SpeakerCases,
+    IReadOnlyList<ParserCase>? ParserCases = null);
 
 public sealed record SimilarityCase(
     string Id,
@@ -377,3 +397,8 @@ public sealed record SpeakerMatchCase(
     string Left,
     string Right,
     bool ExpectedMatch);
+
+public sealed record ParserCase(
+    string Id,
+    string LineText,
+    IReadOnlyList<ExpectedChatMessage> ExpectedMessages);
