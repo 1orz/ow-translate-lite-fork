@@ -38,6 +38,12 @@ Korean similarity regression:
 E:\rstgametranslation\.dotnet\dotnet.exe run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --similarity Tools\ReplayLab\similarity\korean-jamo-regression.json
 ```
 
+Timeline smoke regression:
+
+```powershell
+E:\rstgametranslation\.dotnet\dotnet.exe run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --timeline-smoke
+```
+
 ReplayLab writes `trace.json` and `report.md` under the session's
 `replay-output/<timestamp>/` folder by default.
 

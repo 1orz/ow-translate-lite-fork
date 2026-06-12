@@ -13,6 +13,14 @@ JsonSerializerOptions jsonOptions = new()
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 };
 
+if (args.Length >= 1 && string.Equals(args[0], "--timeline-smoke", StringComparison.OrdinalIgnoreCase))
+{
+    int failures = RunTimelineSmoke();
+    Console.WriteLine($"Timeline smoke: failures={failures}");
+    Environment.ExitCode = failures == 0 ? 0 : 1;
+    return;
+}
+
 if (args.Length >= 2 && string.Equals(args[0], "--similarity", StringComparison.OrdinalIgnoreCase))
 {
     string expectationPath = Path.GetFullPath(args[1]);
@@ -214,6 +222,51 @@ T ReadJson<T>(string path)
     string json = File.ReadAllText(path, Encoding.UTF8);
     return JsonSerializer.Deserialize<T>(json, jsonOptions)
            ?? throw new InvalidOperationException($"Could not parse JSON: {path}");
+}
+
+static int RunTimelineSmoke()
+{
+    int failures = 0;
+    ChatTimeline timeline = new(capacity: 2);
+    ParsedChatLine first = new("Reverieach", "안녕", new Rect(0, 0, 100, 20), []);
+    ParsedChatLine second = new("疯狂的鹿", "힐 줄게", new Rect(0, 24, 100, 20), []);
+    ParsedChatLine third = new("天剑若叶", "겐지 뒤", new Rect(0, 48, 100, 20), []);
+
+    ChatMessage firstMessage = timeline.AddDetected(first, frameId: 1);
+    ChatMessage secondMessage = timeline.AddDetected(second, frameId: 2);
+    ChatMessage thirdMessage = timeline.AddDetected(third, frameId: 3);
+    failures += Assert(firstMessage.Seq == 1, "first seq");
+    failures += Assert(secondMessage.Seq == 2, "second seq");
+    failures += Assert(thirdMessage.Seq == 3, "third seq");
+    failures += Assert(timeline.Messages.Count == 2, "capacity trim");
+    failures += Assert(timeline.Messages[0].Seq == 2 && timeline.Messages[1].Seq == 3, "trim keeps tail");
+
+    timeline.Observe(thirdMessage, new ParsedChatLine("天剑若叶", "겐지뒤", new Rect(0, 50, 120, 20), []), frameId: 4);
+    failures += Assert(thirdMessage.SeenCount == 2, "observe seen count");
+    failures += Assert(thirdMessage.Variants.Count == 2, "observe variant");
+    failures += Assert(thirdMessage.LastSeenFrameId == 4, "observe frame");
+
+    timeline.MarkQueued(thirdMessage);
+    failures += Assert(thirdMessage.State == ChatMessageState.Queued, "queued state");
+    timeline.MarkTranslating(thirdMessage);
+    failures += Assert(thirdMessage.State == ChatMessageState.Translating, "translating state");
+    timeline.MarkTranslated(thirdMessage, "源氏在后面");
+    failures += Assert(thirdMessage.State == ChatMessageState.Translated && thirdMessage.Translation == "源氏在后面", "translated state");
+    timeline.MarkFailed(secondMessage);
+    failures += Assert(secondMessage.State == ChatMessageState.Failed && secondMessage.RetryCount == 1, "failed state");
+
+    IReadOnlyList<ChatMessage> tail = timeline.TailWindow(1);
+    failures += Assert(tail.Count == 1 && tail[0].Seq == 3, "tail window");
+    timeline.Clear();
+    failures += Assert(timeline.Messages.Count == 0, "clear");
+    failures += Assert(timeline.AddDetected(first, frameId: 5).Seq == 1, "clear resets seq");
+    return failures;
+}
+
+static int Assert(bool condition, string label)
+{
+    Console.WriteLine($"{(condition ? "PASS" : "FAIL")} timeline {label}");
+    return condition ? 0 : 1;
 }
 
 static string BuildMarkdownReport(ReplayReport report)
