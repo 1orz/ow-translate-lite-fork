@@ -258,6 +258,7 @@ static int RunTimelineSmoke()
     long retrySeq = secondMessage.Seq;
     timeline.MarkQueued(secondMessage);
     failures += Assert(secondMessage.State == ChatMessageState.Queued && secondMessage.Seq == retrySeq, "retry keeps seq");
+    failures += RunConsensusSmoke();
     failures += RunFrameDiffSmoke();
 
     IReadOnlyList<ChatMessage> tail = timeline.TailWindow(1);
@@ -266,6 +267,24 @@ static int RunTimelineSmoke()
     failures += Assert(timeline.Messages.Count == 0, "clear");
     failures += Assert(timeline.AddDetected(first, frameId: 5).Seq == 1, "clear resets seq");
     failures += RunAlignmentSmoke();
+    return failures;
+}
+
+static int RunConsensusSmoke()
+{
+    int failures = 0;
+    ChatTimeline immediateTimeline = new();
+    ChatMessage immediate = immediateTimeline.AddDetected(Parsed("疯狂的鹿", "힐 줄게"), frameId: 1);
+    immediateTimeline.Observe(immediate, Parsed("疯狂的鹿", "힐줄게"), frameId: 2);
+    failures += Assert(immediate.IsReadyForTranslation(), "consensus jamo immediate ready");
+
+    ChatTimeline votingTimeline = new();
+    ChatMessage voting = votingTimeline.AddDetected(Parsed("天剑若叶", "힐 줄게"), frameId: 1);
+    votingTimeline.Observe(voting, Parsed("天剑若叶", "위도우 조심"), frameId: 2);
+    failures += Assert(!voting.IsReadyForTranslation(), "consensus divergent waits");
+    votingTimeline.Observe(voting, Parsed("天剑若叶", "힐 줄게"), frameId: 3);
+    failures += Assert(voting.IsReadyForTranslation(), "consensus third frame ready");
+    failures += Assert(voting.ConsensusText == "힐 줄게", "consensus majority text");
     return failures;
 }
 

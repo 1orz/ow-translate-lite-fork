@@ -39,7 +39,7 @@ public sealed class ChatTimeline
         message.LastSeenAt = timestamp ?? DateTime.Now;
         message.LastSeenFrameId = frameId;
         message.SeenCount++;
-        message.AddVariant(line.SourceText);
+        message.AddObservation(line.SourceText);
     }
 
     public IReadOnlyList<ChatMessage> TailWindow(int maxCount)
@@ -96,6 +96,7 @@ public sealed class ChatTimeline
 public sealed class ChatMessage
 {
     private readonly List<string> _variants;
+    private readonly List<string> _observations;
 
     public ChatMessage(
         long seq,
@@ -115,14 +116,19 @@ public sealed class ChatMessage
         LastSeenAt = firstSeenAt;
         LastSeenFrameId = firstSeenFrameId;
         _variants = [sourceText];
+        _observations = [sourceText];
+        LastObservedText = sourceText;
     }
 
     public long Seq { get; }
     public string Speaker { get; set; }
     public string ConsensusText { get; private set; }
+    public string LastObservedText { get; private set; }
+    public string? PreviousObservedText { get; private set; }
     public Rect Bounds { get; set; }
     public IReadOnlyList<GlossaryHit> GlossaryHits { get; set; }
     public IReadOnlyList<string> Variants => _variants;
+    public IReadOnlyList<string> Observations => _observations;
     public int SeenCount { get; set; } = 1;
     public long LastSeenFrameId { get; set; }
     public ChatMessageState State { get; set; } = ChatMessageState.Detected;
@@ -131,15 +137,34 @@ public sealed class ChatMessage
     public DateTime FirstSeenAt { get; }
     public DateTime LastSeenAt { get; set; }
 
-    public void AddVariant(string text)
+    public bool IsReadyForTranslation(int maxConfirmationObservations = 2)
     {
-        if (_variants.Contains(text, StringComparer.Ordinal))
+        if (SeenCount < 2)
         {
-            return;
+            return false;
         }
 
-        _variants.Add(text);
-        ConsensusText = ChooseConsensusText(_variants);
+        if (AreConsecutiveObservationsEquivalent(PreviousObservedText, LastObservedText))
+        {
+            return true;
+        }
+
+        return ConfirmationObservationCount >= maxConfirmationObservations;
+    }
+
+    public int ConfirmationObservationCount => Math.Max(0, SeenCount - 1);
+
+    public void AddObservation(string text)
+    {
+        PreviousObservedText = LastObservedText;
+        LastObservedText = text;
+        _observations.Add(text);
+        if (!_variants.Contains(text, StringComparer.Ordinal))
+        {
+            _variants.Add(text);
+        }
+
+        ConsensusText = ChooseConsensusText(_observations);
     }
 
     private static string ChooseConsensusText(IReadOnlyList<string> variants) =>
@@ -149,6 +174,25 @@ public sealed class ChatMessage
             .ThenByDescending(static group => group.Key.Length)
             .First()
             .Key;
+
+    private static bool AreConsecutiveObservationsEquivalent(string? previous, string current)
+    {
+        if (string.IsNullOrWhiteSpace(previous) || string.IsNullOrWhiteSpace(current))
+        {
+            return false;
+        }
+
+        string normalizedPrevious = OcrDedupeNormalizer.NormalizeText(previous);
+        string normalizedCurrent = OcrDedupeNormalizer.NormalizeText(current);
+        if (string.Equals(normalizedPrevious, normalizedCurrent, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        bool hasHangul = KoreanJamoNormalizer.ContainsHangul(normalizedPrevious) ||
+                         KoreanJamoNormalizer.ContainsHangul(normalizedCurrent);
+        return hasHangul && KoreanJamoNormalizer.JamoEditDistance(normalizedPrevious, normalizedCurrent) <= 1;
+    }
 }
 
 public enum ChatMessageState

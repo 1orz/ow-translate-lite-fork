@@ -17,7 +17,6 @@ public partial class MainWindow : Window
 {
     private static readonly TimeSpan OverlayIdleHideDelay = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan OverlayHistoryPeekDuration = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan TranslationBatchWindow = TimeSpan.FromMilliseconds(120);
     private const int MinSamplingIntervalMs = 250;
     private const int MaxSamplingIntervalMs = 300;
     private const int BurstOcrFrameCount = 3;
@@ -854,29 +853,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<List<ParsedChatLine>> DequeueTranslationBatchAsync(CancellationToken cancellationToken)
+    private Task<List<ParsedChatLine>> DequeueTranslationBatchAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         List<ParsedChatLine> batch = [];
         lock (_translationQueueLock)
         {
             if (_translationQueue.Count == 0)
             {
                 _translationQueueStatus.SetQueuedCount(0);
-                return batch;
+                return Task.FromResult(batch);
             }
 
             batch.Add(_translationQueue.Dequeue());
             _translationQueueStatus.SetQueuedCount(_translationQueue.Count);
-        }
-
-        try
-        {
-            await Task.Delay(TranslationBatchWindow, cancellationToken);
-        }
-        catch
-        {
-            _coordinator.ReleasePendingTranslations(batch);
-            throw;
         }
 
         lock (_translationQueueLock)
@@ -889,7 +879,7 @@ public partial class MainWindow : Window
             _translationQueueStatus.SetQueuedCount(_translationQueue.Count);
         }
 
-        return batch;
+        return Task.FromResult(batch);
     }
 
     private void AddTranslationRecords(IReadOnlyList<TranslationRecord> records)

@@ -196,8 +196,19 @@ public sealed class TranslationCoordinator
                 continue;
             }
 
-            if (message.SeenCount < 2 || message.LastSeenFrameId != frameId)
+            if (message.LastSeenFrameId != frameId)
             {
+                continue;
+            }
+
+            if (!message.IsReadyForTranslation())
+            {
+                ParsedChatLine waitingLine = ToParsedChatLine(message);
+                decisions.Add(new FrameDetectionDecision(
+                    waitingLine,
+                    false,
+                    $"confirming-seq-{message.Seq}-seen-{message.SeenCount}",
+                    message.Seq.ToString()));
                 continue;
             }
 
