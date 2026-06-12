@@ -258,6 +258,7 @@ static int RunTimelineSmoke()
     long retrySeq = secondMessage.Seq;
     timeline.MarkQueued(secondMessage);
     failures += Assert(secondMessage.State == ChatMessageState.Queued && secondMessage.Seq == retrySeq, "retry keeps seq");
+    failures += RunPostProcessorSmoke();
     failures += RunConsensusSmoke();
     failures += RunFrameDiffSmoke();
 
@@ -267,6 +268,25 @@ static int RunTimelineSmoke()
     failures += Assert(timeline.Messages.Count == 0, "clear");
     failures += Assert(timeline.AddDetected(first, frameId: 5).Seq == 1, "clear resets seq");
     failures += RunAlignmentSmoke();
+    return failures;
+}
+
+static int RunPostProcessorSmoke()
+{
+    int failures = 0;
+    IReadOnlyList<OcrTextLine> merged = OcrTextPostProcessor.Process(
+        [
+            new OcrTextLine("[Reverieach]: 위도우 조심", new Rect(0, 0, 220, 20)),
+            new OcrTextLine("뒤에 있어们", new Rect(18, 22, 120, 20))
+        ]);
+    failures += Assert(merged.Count == 1 && merged[0].Text.Contains("뒤에 있어们", StringComparison.Ordinal), "postprocessor korean cjk-noise wrap");
+
+    IReadOnlyList<OcrTextLine> notMerged = OcrTextPostProcessor.Process(
+        [
+            new OcrTextLine("[Reverieach]: 위도우 조심", new Rect(0, 0, 220, 20)),
+            new OcrTextLine("玩家加入比赛", new Rect(18, 22, 120, 20))
+        ]);
+    failures += Assert(notMerged.Count == 2, "postprocessor chinese system not wrap");
     return failures;
 }
 

@@ -67,12 +67,13 @@ public static partial class OcrTextPostProcessor
 
     private static bool IsContinuationCandidate(string text)
     {
+        ScriptCounts scripts = CountScripts(text);
         return !LooksLikePlayerMessage(text) &&
                !text.Contains('[') &&
                !text.Contains(']') &&
-               !HasCjk(text) &&
+               !IsCjkDominantWithoutHangul(scripts) &&
                text.Length <= 48 &&
-               HasChatScript(text);
+               scripts.HasChatScript;
     }
 
     private static bool IsLikelyWrappedLine(Rect previous, Rect current)
@@ -93,19 +94,49 @@ public static partial class OcrTextPostProcessor
                current.Left <= previous.Right + 24;
     }
 
-    private static bool HasChatScript(string text)
+    private static bool HasChatScript(string text) =>
+        CountScripts(text).HasChatScript;
+
+    private static bool IsCjkDominantWithoutHangul(ScriptCounts scripts) =>
+        scripts.Hangul == 0 &&
+        scripts.Cjk > 0 &&
+        scripts.Cjk >= Math.Max(2, scripts.TotalLetters / 2);
+
+    private static ScriptCounts CountScripts(string text)
     {
-        return text.Any(static ch =>
-            ch is >= 'A' and <= 'Z' ||
-            ch is >= 'a' and <= 'z' ||
-            ch is >= '\u3040' and <= '\u30FF' ||
-            ch is >= '\uAC00' and <= '\uD7AF' ||
-            ch is >= '\u1100' and <= '\u11FF');
+        int hangul = 0;
+        int kana = 0;
+        int latin = 0;
+        int cjk = 0;
+        foreach (char ch in text)
+        {
+            if (ch is >= '\uAC00' and <= '\uD7AF' ||
+                ch is >= '\u1100' and <= '\u11FF' ||
+                ch is >= '\u3130' and <= '\u318F')
+            {
+                hangul++;
+            }
+            else if (ch is >= '\u3040' and <= '\u30FF')
+            {
+                kana++;
+            }
+            else if (ch is >= 'A' and <= 'Z' or >= 'a' and <= 'z')
+            {
+                latin++;
+            }
+            else if (ch is >= '\u4E00' and <= '\u9FFF')
+            {
+                cjk++;
+            }
+        }
+
+        return new ScriptCounts(hangul, kana, latin, cjk);
     }
 
-    private static bool HasCjk(string text)
+    private sealed record ScriptCounts(int Hangul, int Kana, int Latin, int Cjk)
     {
-        return text.Any(static ch => ch is >= '\u4E00' and <= '\u9FFF');
+        public int TotalLetters => Hangul + Kana + Latin + Cjk;
+        public bool HasChatScript => Hangul > 0 || Kana > 0 || Latin > 0;
     }
 
     [GeneratedRegex(@"^\[(?<speaker>[^\]\[:：/\\]{2,24})\s*[:：]\s*(?<message>.+)$")]
