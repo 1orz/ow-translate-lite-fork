@@ -208,12 +208,14 @@ public sealed class TranslationCoordinator
                     continue;
                 }
 
+                ChatMessage? message = FindTimelineMessage(result.SourceLine);
+                long seq = message?.Seq ?? 0;
                 records.Add(new TranslationRecord(
+                    seq,
                     result.SourceLine.Speaker,
                     result.SourceLine.SourceText,
                     result.TranslatedText,
                     DateTime.Now));
-                ChatMessage? message = FindTimelineMessage(result.SourceLine);
                 if (message is not null)
                 {
                     _timeline.MarkTranslated(message, result.TranslatedText);
