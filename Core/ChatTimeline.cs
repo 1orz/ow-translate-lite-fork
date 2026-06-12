@@ -23,6 +23,7 @@ public sealed class ChatTimeline
             line.Speaker,
             line.SourceText,
             line.Bounds,
+            line.GlossaryHits,
             now,
             frameId);
         _messages.Add(message);
@@ -34,6 +35,7 @@ public sealed class ChatTimeline
     {
         message.Speaker = line.Speaker;
         message.Bounds = Rect.Union(message.Bounds, line.Bounds);
+        message.GlossaryHits = line.GlossaryHits;
         message.LastSeenAt = timestamp ?? DateTime.Now;
         message.LastSeenFrameId = frameId;
         message.SeenCount++;
@@ -100,6 +102,7 @@ public sealed class ChatMessage
         string speaker,
         string sourceText,
         Rect bounds,
+        IReadOnlyList<GlossaryHit> glossaryHits,
         DateTime firstSeenAt,
         long firstSeenFrameId)
     {
@@ -107,6 +110,7 @@ public sealed class ChatMessage
         Speaker = speaker;
         ConsensusText = sourceText;
         Bounds = bounds;
+        GlossaryHits = glossaryHits;
         FirstSeenAt = firstSeenAt;
         LastSeenAt = firstSeenAt;
         LastSeenFrameId = firstSeenFrameId;
@@ -117,6 +121,7 @@ public sealed class ChatMessage
     public string Speaker { get; set; }
     public string ConsensusText { get; private set; }
     public Rect Bounds { get; set; }
+    public IReadOnlyList<GlossaryHit> GlossaryHits { get; set; }
     public IReadOnlyList<string> Variants => _variants;
     public int SeenCount { get; set; } = 1;
     public long LastSeenFrameId { get; set; }
