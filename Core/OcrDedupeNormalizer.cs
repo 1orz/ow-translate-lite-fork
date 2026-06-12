@@ -24,13 +24,30 @@ public static class OcrDedupeNormalizer
             return true;
         }
 
-        int limit = Math.Min(left.Length, right.Length);
-        if (limit < 5 || Math.Abs(left.Length - right.Length) > 1)
+        string compactLeft = RemoveSpaces(left);
+        string compactRight = RemoveSpaces(right);
+        bool hasHangul = KoreanJamoNormalizer.ContainsHangul(compactLeft) ||
+                         KoreanJamoNormalizer.ContainsHangul(compactRight);
+        if (hasHangul)
+        {
+            string leftJamo = KoreanJamoNormalizer.NormalizeToJamo(compactLeft);
+            string rightJamo = KoreanJamoNormalizer.NormalizeToJamo(compactRight);
+            int jamoLimit = Math.Min(leftJamo.Length, rightJamo.Length);
+            if (jamoLimit < 3 || Math.Abs(leftJamo.Length - rightJamo.Length) > 2)
+            {
+                return false;
+            }
+
+            return LevenshteinDistance(leftJamo, rightJamo) <= 1;
+        }
+
+        int limit = Math.Min(compactLeft.Length, compactRight.Length);
+        if (limit < 5 || Math.Abs(compactLeft.Length - compactRight.Length) > 1)
         {
             return false;
         }
 
-        return LevenshteinDistance(left, right) <= 1;
+        return LevenshteinDistance(compactLeft, compactRight) <= 1;
     }
 
     public static bool IsSimilarText(string left, string right)
@@ -43,9 +60,23 @@ public static class OcrDedupeNormalizer
             return 1;
         }
 
+        bool hasHangul = KoreanJamoNormalizer.ContainsHangul(left) ||
+                         KoreanJamoNormalizer.ContainsHangul(right);
+        string compactLeft = RemoveSpaces(left);
+        string compactRight = RemoveSpaces(right);
+        if (compactLeft == compactRight && compactLeft.Length > 0)
+        {
+            return 1;
+        }
+
+        if (hasHangul)
+        {
+            return HangulSimilarityScore(left, right, compactLeft, compactRight);
+        }
+
         if (left.Length < 8 || right.Length < 8)
         {
-            return 0;
+            return CompactShortTextSimilarity(compactLeft, compactRight);
         }
 
         double best = 0;
@@ -77,6 +108,47 @@ public static class OcrDedupeNormalizer
         best = Math.Max(best, 1.0 - ((double)LevenshteinDistance(left, right) / Math.Max(left.Length, right.Length)));
         best = Math.Min(1, best + NumericAnchorBonus(left, right));
         return best;
+    }
+
+    private static double HangulSimilarityScore(string left, string right, string compactLeft, string compactRight)
+    {
+        double best = 0;
+        if (compactLeft.Length > 0 && compactRight.Length > 0)
+        {
+            best = Math.Max(best, KoreanJamoNormalizer.JamoSimilarity(compactLeft, compactRight));
+            best = Math.Max(best, CharacterDiceRatio(
+                KoreanJamoNormalizer.NormalizeToJamo(compactLeft),
+                KoreanJamoNormalizer.NormalizeToJamo(compactRight)));
+            best = Math.Max(best, LongestCommonSubsequenceRatio(
+                KoreanJamoNormalizer.NormalizeToJamo(compactLeft),
+                KoreanJamoNormalizer.NormalizeToJamo(compactRight)));
+        }
+
+        if (Math.Min(compactLeft.Length, compactRight.Length) >= 2)
+        {
+            best = Math.Max(best, CompactLevenshteinRatio(left, right));
+            best = Math.Max(best, CharacterDiceRatio(left, right));
+            best = Math.Max(best, CompactTokenCoverageRatio(left, right) * 0.75);
+        }
+
+        return Math.Min(1, best + NumericAnchorBonus(left, right));
+    }
+
+    private static double CompactShortTextSimilarity(string compactLeft, string compactRight)
+    {
+        if (compactLeft.Length == 0 || compactRight.Length == 0)
+        {
+            return 0;
+        }
+
+        int maxLength = Math.Max(compactLeft.Length, compactRight.Length);
+        if (maxLength < 3 || Math.Abs(compactLeft.Length - compactRight.Length) > 1)
+        {
+            return 0;
+        }
+
+        int distance = LevenshteinDistance(compactLeft, compactRight);
+        return distance <= 1 ? 1.0 - ((double)distance / maxLength) : 0;
     }
 
     private static double TokenOverlapRatio(string left, string right)
