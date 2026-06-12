@@ -23,6 +23,7 @@ selected region
 - `Core/SettingsMigrator.cs`: legacy setting normalization and API key migration.
 - `Core/OcrTextPostProcessor.cs`: player-boundary repair and wrapped-line merge before parsing.
 - `Core/DiagnosticsService.cs`: beta diagnostics, runtime log, dedupe log, and redacted report export.
+- `Core/FrameSequenceRecorder.cs`: beta frame-sequence recording for ReplayLab fixtures.
 - `Core/OwGlossaryService.cs`: glossary load, OCR normalization, prompt context, term locking.
 - `Core/OwChatParser.cs`: player-chat extraction and Chinese UI filtering.
 - `Core/TranslationCoordinator.cs`: capture/OCR/parse/translate loop, duplicate suppression, and optional raw screenshot capture for OCR lab fixtures when genuinely new chat lines are detected.
@@ -35,6 +36,7 @@ selected region
 - `Overlay/OverlayController.cs`: overlay lifecycle and event boundary.
 - `AreaSelectorWindow.xaml`: capture region selector.
 - `Tools/OcrPreprocessLab`: local OCR preprocessing comparison tool for production `ColorPreserving`, grayscale baselines, no-sharpen variants, and parameter sweeps.
+- `Tools/ReplayLab`: offline replay of recorded frame sequences with missing/duplicate/order assertions.
 - `Tools/GlossaryValidator`: OW glossary maintenance checker.
 
 ## OCR Preprocessing Status
