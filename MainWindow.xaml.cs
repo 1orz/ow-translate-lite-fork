@@ -22,8 +22,10 @@ public partial class MainWindow : Window
     private const int BurstOcrFrameCount = 3;
     private const int MaxOverlayRecords = 50;
     private const int MaxLogRecords = 200;
-    private const int MaxTranslationQueueItems = 30;
+    private const int TranslationQueueSoftBatchThreshold = 30;
+    private const int TranslationQueueHardLimit = 100;
     private const int MaxTranslationBatchSize = 4;
+    private const int MaxOverflowTranslationBatchSize = 30;
     private const int MaxTranslationRetries = 2;
     private const int ReplyHotkeyId = 0x4F57;
 
@@ -729,7 +731,7 @@ public partial class MainWindow : Window
 
     private void EnqueueTranslationLines(IReadOnlyList<ParsedChatLine> lines, int generation, CancellationToken cancellationToken)
     {
-        List<ParsedChatLine> dropped = [];
+        List<ParsedChatLine> skipped = [];
         int queuedCount;
         lock (_translationQueueLock)
         {
@@ -738,9 +740,9 @@ public partial class MainWindow : Window
                 _translationQueue.Enqueue(line);
             }
 
-            while (_translationQueue.Count > MaxTranslationQueueItems)
+            while (_translationQueue.Count > TranslationQueueHardLimit)
             {
-                dropped.Add(_translationQueue.Dequeue());
+                skipped.Add(_translationQueue.Dequeue());
             }
 
             queuedCount = _translationQueue.Count;
@@ -748,14 +750,14 @@ public partial class MainWindow : Window
 
         _translationQueueStatus.SetQueuedCount(queuedCount);
 
-        if (dropped.Count > 0)
+        if (skipped.Count > 0)
         {
-            _coordinator.ReleasePendingTranslations(dropped);
+            _coordinator.ReleasePendingTranslations(skipped);
             Dispatcher.Invoke(() =>
             {
                 if (IsActiveGeneration(generation))
                 {
-                    AddLog($"翻译队列过长，已跳过 {dropped.Count} 条较旧消息。");
+                    AddLog($"翻译队列超过安全上限，已跳过 {skipped.Count} 条最旧消息。");
                 }
             });
         }
@@ -857,6 +859,7 @@ public partial class MainWindow : Window
     {
         cancellationToken.ThrowIfCancellationRequested();
         List<ParsedChatLine> batch = [];
+        int batchLimit;
         lock (_translationQueueLock)
         {
             if (_translationQueue.Count == 0)
@@ -865,13 +868,16 @@ public partial class MainWindow : Window
                 return Task.FromResult(batch);
             }
 
+            batchLimit = _translationQueue.Count >= TranslationQueueSoftBatchThreshold
+                ? MaxOverflowTranslationBatchSize
+                : MaxTranslationBatchSize;
             batch.Add(_translationQueue.Dequeue());
             _translationQueueStatus.SetQueuedCount(_translationQueue.Count);
         }
 
         lock (_translationQueueLock)
         {
-            while (batch.Count < MaxTranslationBatchSize && _translationQueue.Count > 0)
+            while (batch.Count < batchLimit && _translationQueue.Count > 0)
             {
                 batch.Add(_translationQueue.Dequeue());
             }
