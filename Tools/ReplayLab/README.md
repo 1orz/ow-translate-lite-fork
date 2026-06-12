@@ -32,6 +32,12 @@ Smoke fixture:
 E:\rstgametranslation\.dotnet\dotnet.exe run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- Tools\ReplayLab\fixtures\smoke-korean-short Tools\ReplayLab\fixtures\smoke-korean-short\expected.json
 ```
 
+Korean similarity regression:
+
+```powershell
+E:\rstgametranslation\.dotnet\dotnet.exe run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --similarity Tools\ReplayLab\similarity\korean-jamo-regression.json
+```
+
 ReplayLab writes `trace.json` and `report.md` under the session's
 `replay-output/<timestamp>/` folder by default.
 

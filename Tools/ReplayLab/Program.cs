@@ -12,6 +12,50 @@ JsonSerializerOptions jsonOptions = new()
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 };
 
+if (args.Length >= 2 && string.Equals(args[0], "--similarity", StringComparison.OrdinalIgnoreCase))
+{
+    string expectationPath = Path.GetFullPath(args[1]);
+    SimilarityRegressionSet set = ReadJson<SimilarityRegressionSet>(expectationPath);
+    int failures = 0;
+    foreach (SimilarityCase item in set.TextCases)
+    {
+        double score = OcrDedupeNormalizer.TextSimilarityScore(
+            OcrDedupeNormalizer.NormalizeText(item.Left),
+            OcrDedupeNormalizer.NormalizeText(item.Right));
+        bool passed = score >= item.MinScore && score <= item.MaxScore;
+        if (item.ExpectedSimilar is bool expectedSimilar)
+        {
+            bool actualSimilar = OcrDedupeNormalizer.IsSimilarText(
+                OcrDedupeNormalizer.NormalizeText(item.Left),
+                OcrDedupeNormalizer.NormalizeText(item.Right));
+            passed &= actualSimilar == expectedSimilar;
+        }
+
+        Console.WriteLine($"{(passed ? "PASS" : "FAIL")} text {item.Id}: score={score:0.###}");
+        if (!passed)
+        {
+            failures++;
+        }
+    }
+
+    foreach (SpeakerMatchCase item in set.SpeakerCases)
+    {
+        bool actual = OcrDedupeNormalizer.IsSpeakerMatch(
+            OcrDedupeNormalizer.NormalizeSpeaker(item.Left),
+            OcrDedupeNormalizer.NormalizeSpeaker(item.Right));
+        bool passed = actual == item.ExpectedMatch;
+        Console.WriteLine($"{(passed ? "PASS" : "FAIL")} speaker {item.Id}: actual={actual}");
+        if (!passed)
+        {
+            failures++;
+        }
+    }
+
+    Console.WriteLine($"Similarity regression: cases={set.TextCases.Count + set.SpeakerCases.Count}, failures={failures}");
+    Environment.ExitCode = failures == 0 ? 0 : 1;
+    return;
+}
+
 if (args.Length < 1)
 {
     Console.Error.WriteLine("Usage: ReplayLab <session-directory> [expected.json] [output-directory]");
@@ -315,3 +359,21 @@ public static class ReplayKey
     public static string MessageKey(ExpectedChatMessage message) =>
         $"{OcrDedupeNormalizer.NormalizeSpeaker(message.Speaker)}:{OcrDedupeNormalizer.NormalizeText(message.SourceText)}";
 }
+
+public sealed record SimilarityRegressionSet(
+    IReadOnlyList<SimilarityCase> TextCases,
+    IReadOnlyList<SpeakerMatchCase> SpeakerCases);
+
+public sealed record SimilarityCase(
+    string Id,
+    string Left,
+    string Right,
+    double MinScore,
+    double MaxScore,
+    bool? ExpectedSimilar = null);
+
+public sealed record SpeakerMatchCase(
+    string Id,
+    string Left,
+    string Right,
+    bool ExpectedMatch);
