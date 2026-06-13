@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -77,7 +78,6 @@ public partial class MainWindow : Window
         _config.Load();
         _glossary = OwGlossaryService.LoadDefault();
         _coordinator = CreateCoordinator();
-        GlossaryStatusText.Text = $"术语 { _glossary.EntryCount } 项 · { _glossary.Version }";
         LoadSettingsToUi();
         EnsureOverlay();
         ApplyRunningState();
@@ -127,6 +127,7 @@ public partial class MainWindow : Window
             FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
             UpdateProviderPreset();
             UpdateRegionText();
+            RefreshStatusChips();
         }
         finally
         {
@@ -154,6 +155,7 @@ public partial class MainWindow : Window
         SaveOverlayBounds(settings);
         _config.Save();
         ApplyOverlaySettings();
+        RefreshStatusChips();
     }
 
     private void ApplyScreenshotSaveDirectory()
@@ -481,6 +483,7 @@ public partial class MainWindow : Window
                 : models[0];
             SaveSettingsFromUi();
             AddLog($"已获取 {models.Count} 个模型。");
+            RefreshStatusChips();
         }
         catch (OperationCanceledException) when (fetchCts.IsCancellationRequested)
         {
@@ -680,6 +683,7 @@ public partial class MainWindow : Window
                     LatencyText.Text = ranOcr
                         ? $"{stopwatch.ElapsedMilliseconds} ms OCR"
                         : $"{stopwatch.ElapsedMilliseconds} ms patrol";
+                    RefreshStatusChips(ranOcr ? "OCR burst" : null);
                 });
             }
             catch (OperationCanceledException)
@@ -729,6 +733,13 @@ public partial class MainWindow : Window
         }
 
         _translationQueueStatus.SetQueuedCount(queuedCount);
+        Dispatcher.Invoke(() =>
+        {
+            if (IsActiveGeneration(generation))
+            {
+                RefreshStatusChips();
+            }
+        });
 
         if (skipped.Count > 0)
         {
@@ -863,6 +874,7 @@ public partial class MainWindow : Window
             }
 
             _translationQueueStatus.SetQueuedCount(_translationQueue.Count);
+            Dispatcher.Invoke(RefreshStatusChips);
         }
 
         return Task.FromResult(batch);
@@ -896,6 +908,8 @@ public partial class MainWindow : Window
         EnsureOverlay();
         _overlayController.Show();
         _overlayController.UpdateRecords(_records);
+        UpdateRecentRecords();
+        RefreshStatusChips();
     }
 
     private void RestartLoop(bool resetChatCycle, bool resetOcrEngine, string message)
@@ -932,6 +946,7 @@ public partial class MainWindow : Window
         _activeRunSettingsKey = CreateRunSettingsKey();
         StatusText.Text = "运行中";
         ApplyRunningState();
+        RefreshStatusChips();
         AddLog(message);
         _ = RunLoopAsync(generation, _loopCts.Token);
     }
@@ -953,6 +968,7 @@ public partial class MainWindow : Window
         ClearTranslationQueue();
         _coordinator.ClearPendingTranslations();
         ApplyRunningState();
+        RefreshStatusChips();
 
         if (clearOverlay)
         {
@@ -1241,6 +1257,8 @@ public partial class MainWindow : Window
         _overlayHiddenByIdle = false;
         _consecutiveNoChatFrames = 0;
         _overlayController.UpdateRecords(_records);
+        UpdateRecentRecords();
+        RefreshStatusChips();
     }
 
     private void ClearTranslationQueue()
@@ -1323,6 +1341,7 @@ public partial class MainWindow : Window
         StopButton.IsEnabled = _isRunning;
         AdjustFrameButton.IsEnabled = true;
         UpdateFrameRecordingUi();
+        RefreshStatusChips();
     }
 
     private void UpdateFrameRecordingUi()
@@ -1373,6 +1392,52 @@ public partial class MainWindow : Window
             _config.Settings.ApiUrl,
             _config.Settings.Model,
             regionKey);
+    }
+
+    private void RefreshStatusChips(string? samplingStatus = null)
+    {
+        if (RunStatePillText is null)
+        {
+            return;
+        }
+
+        VersionText.Text = $"v{GetAppVersionLabel()}";
+        RunStatePillText.Text = _isRunning ? "运行中" : "待机";
+        ApiStateChipText.Text = string.IsNullOrWhiteSpace(_config.Settings.ApiKey)
+            ? "API 未配置"
+            : "API 已配置";
+        ModelStateChipText.Text = string.IsNullOrWhiteSpace(_config.Settings.Model)
+            ? "未选择模型"
+            : _config.Settings.Model;
+        SamplingStateChipText.Text = samplingStatus ?? $"巡逻 {GetSamplingDelayMs()}ms";
+        TranslationQueueStatus queue = _translationQueueStatus.Snapshot();
+        QueueStateChipText.Text = $"队列 {queue.QueuedCount}";
+        QueueMetricText.Text = queue.QueuedCount.ToString();
+        GlossaryStatusText.Text = $"术语 {_glossary.EntryCount} 项 · {_glossary.Version}";
+    }
+
+    private void UpdateRecentRecords()
+    {
+        if (RecentRecordList is null)
+        {
+            return;
+        }
+
+        RecentRecordList.ItemsSource = _records
+            .TakeLast(12)
+            .Reverse<TranslationRecord>()
+            .ToList();
+    }
+
+    private static string GetAppVersionLabel()
+    {
+        Assembly assembly = Assembly.GetExecutingAssembly();
+        string? informationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        return string.IsNullOrWhiteSpace(informationalVersion)
+            ? assembly.GetName().Version?.ToString() ?? "0.0.0"
+            : informationalVersion;
     }
 
     private static bool IsFinite(double value) =>
