@@ -12,8 +12,9 @@
         Width="520"
         Height="180">
     <Window.Resources>
-        <SolidColorBrush x:Key="ReplyComboForegroundBrush" Color="#D7E7F2"/>
-        <SolidColorBrush x:Key="ReplyComboAccentBrush" Color="#8EDCFF"/>
+        <SolidColorBrush x:Key="ReplyComboForegroundBrush" Color="#06080C"/>
+        <SolidColorBrush x:Key="ReplyComboAccentBrush" Color="#161A22"/>
+        <SolidColorBrush x:Key="ReplyComboButtonBrush" Color="#DDECF4FF"/>
         <SolidColorBrush x:Key="OverlayMutedBrush" Color="#A7AFBA"/>
         <SolidColorBrush x:Key="OverlayPanelBrush" Color="#D40B0C10"/>
         <SolidColorBrush x:Key="OverlayInputBrush" Color="#E0161820"/>
@@ -34,7 +35,7 @@
 
         <Style x:Key="ReplyComboBoxStyle" TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="{StaticResource ReplyComboForegroundBrush}"/>
-            <Setter Property="BorderBrush" Value="#2CFFFFFF"/>
+            <Setter Property="BorderBrush" Value="#88FFFFFF"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,0"/>
             <Setter Property="ItemContainerStyle" Value="{StaticResource ReplyComboBoxItemStyle}"/>
@@ -219,7 +220,7 @@
                               Grid.Column="0"
                               Style="{StaticResource ReplyComboBoxStyle}"
                               BorderThickness="1"
-                              Background="{StaticResource OverlayInputBrush}"
+                              Background="{StaticResource ReplyComboButtonBrush}"
                               VerticalContentAlignment="Center">
                         <ComboBoxItem Content="自动" Tag="auto"/>
                         <ComboBoxItem Content="英语" Tag="en"/>
