@@ -68,6 +68,7 @@ public partial class MainWindow : Window
     private bool _isRunning;
     private bool _isReplyModeActive;
     private bool _isLoadingSettings;
+    private bool _isSyncingLeftConfigScroll;
     private bool _isAdjustingTranslationFrame;
     private int _burstOcrFramesRemaining;
     private int _consecutiveNoChatFrames;
@@ -344,6 +345,50 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized
             ? WindowState.Normal
             : WindowState.Maximized;
+    }
+
+    private void LeftConfigScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (_isSyncingLeftConfigScroll)
+        {
+            return;
+        }
+
+        _isSyncingLeftConfigScroll = true;
+        try
+        {
+            LeftConfigScrollBar.Maximum = LeftConfigScrollViewer.ScrollableHeight;
+            LeftConfigScrollBar.ViewportSize = LeftConfigScrollViewer.ViewportHeight;
+            LeftConfigScrollBar.Value = Math.Clamp(
+                LeftConfigScrollViewer.VerticalOffset,
+                LeftConfigScrollBar.Minimum,
+                LeftConfigScrollBar.Maximum);
+            LeftConfigScrollBar.Visibility = LeftConfigScrollViewer.ScrollableHeight > 0
+                ? Visibility.Visible
+                : Visibility.Hidden;
+        }
+        finally
+        {
+            _isSyncingLeftConfigScroll = false;
+        }
+    }
+
+    private void LeftConfigScrollBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isSyncingLeftConfigScroll || !IsLoaded)
+        {
+            return;
+        }
+
+        _isSyncingLeftConfigScroll = true;
+        try
+        {
+            LeftConfigScrollViewer.ScrollToVerticalOffset(e.NewValue);
+        }
+        finally
+        {
+            _isSyncingLeftConfigScroll = false;
+        }
     }
 
     private void OverlaySettings_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
