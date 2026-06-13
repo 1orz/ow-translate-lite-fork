@@ -91,18 +91,12 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Grid Grid.Column="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                    </Grid.ColumnDefinitions>
-
-                    <ScrollViewer x:Name="LeftConfigScrollViewer"
-                                  Grid.Column="0"
-                                  VerticalScrollBarVisibility="Hidden"
-                                  HorizontalScrollBarVisibility="Disabled"
-                                  Padding="0,0,8,0"
-                                  ScrollChanged="LeftConfigScrollViewer_ScrollChanged">
+                <ScrollViewer x:Name="LeftConfigScrollViewer"
+                              Grid.Column="0"
+                              VerticalScrollBarVisibility="Hidden"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="0"
+                              PreviewMouseWheel="FastScrollViewer_PreviewMouseWheel">
                     <StackPanel Margin="0,0,0,12">
                         <Border x:Name="FirstRunPanel" Style="{StaticResource CardBorderStyle}" BorderBrush="#660A84FF" Margin="0,0,0,12">
                             <StackPanel>
@@ -261,15 +255,6 @@
                         </Expander>
                     </StackPanel>
                 </ScrollViewer>
-                    <ScrollBar x:Name="LeftConfigScrollBar"
-                               Grid.Column="1"
-                               Orientation="Vertical"
-                               Minimum="0"
-                               SmallChange="36"
-                               LargeChange="160"
-                               Visibility="Hidden"
-                               ValueChanged="LeftConfigScrollBar_ValueChanged"/>
-                </Grid>
 
                 <Grid Grid.Column="2">
                     <Grid.RowDefinitions>
