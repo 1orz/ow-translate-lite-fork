@@ -89,27 +89,27 @@ selected chat region
 
 采样侧采用像素 diff 巡逻：稳定画面只做低成本截图签名，不跑 OCR；检测到聊天区域变化后再进行短突发 OCR。翻译完成后，overlay 按 Timeline `Seq` 排序回填，因此网络延迟或重试不会改变聊天显示顺序。
 
-### 构建
+### 开发者命令
 
-推荐使用仓库同级目录的本地 .NET SDK：
+普通用户不需要运行这些命令。下面的命令用于开发、验证或准备测试包，路径均使用仓库相对路径，适合在其他机器或 CI 环境中复用。
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" build OwTranslateLite.csproj -c Release
+dotnet build OwTranslateLite.csproj -c Release
 ```
 
 发布测试包：
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" publish OwTranslateLite.csproj -c Release -o E:\rstgametranslation\ow-translate-lite\dist\OWTranslatorLite-v0.2.0-beta.4-ui-portable-win-x64
+dotnet publish OwTranslateLite.csproj -c Release -o dist/OWTranslatorLite-v0.2.0-beta.4-ui-portable-win-x64
 ```
 
-### 回归测试
+回归测试：
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --timeline-smoke
-& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --similarity Tools\ReplayLab\similarity\korean-jamo-regression.json
-& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- Tools\ReplayLab\fixtures\smoke-korean-short Tools\ReplayLab\fixtures\smoke-korean-short\expected.json
-& "E:\rstgametranslation\.dotnet\dotnet.exe" build OwTranslateLite.csproj -c Release
+dotnet run --project Tools/ReplayLab/ReplayLab.csproj -c Release -- --timeline-smoke
+dotnet run --project Tools/ReplayLab/ReplayLab.csproj -c Release -- --similarity Tools/ReplayLab/similarity/korean-jamo-regression.json
+dotnet run --project Tools/ReplayLab/ReplayLab.csproj -c Release -- Tools/ReplayLab/fixtures/smoke-korean-short Tools/ReplayLab/fixtures/smoke-korean-short/expected.json
+dotnet build OwTranslateLite.csproj -c Release
 ```
 
 期望 fixture 指标：
@@ -207,27 +207,27 @@ New candidates are not translated immediately. They wait for multi-frame consens
 
 The capture loop uses pixel-diff patrol: stable frames only compute a cheap screenshot signature and do not run OCR. When the chat region changes, the app runs a short OCR burst. Completed translations are rendered by Timeline `Seq`, so retries and network latency do not reorder the overlay.
 
-### Build
+### Developer Commands
 
-Use the local .NET SDK near the repository:
+End users do not need to run these commands. They are for development, validation, and tester package preparation. All paths are repository-relative so they can be reused on other machines or in CI.
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" build OwTranslateLite.csproj -c Release
+dotnet build OwTranslateLite.csproj -c Release
 ```
 
 Publish a tester package:
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" publish OwTranslateLite.csproj -c Release -o E:\rstgametranslation\ow-translate-lite\dist\OWTranslatorLite-v0.2.0-beta.4-ui-portable-win-x64
+dotnet publish OwTranslateLite.csproj -c Release -o dist/OWTranslatorLite-v0.2.0-beta.4-ui-portable-win-x64
 ```
 
-### Regression Tests
+Regression tests:
 
 ```powershell
-& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --timeline-smoke
-& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- --similarity Tools\ReplayLab\similarity\korean-jamo-regression.json
-& "E:\rstgametranslation\.dotnet\dotnet.exe" run --project Tools\ReplayLab\ReplayLab.csproj -c Release -- Tools\ReplayLab\fixtures\smoke-korean-short Tools\ReplayLab\fixtures\smoke-korean-short\expected.json
-& "E:\rstgametranslation\.dotnet\dotnet.exe" build OwTranslateLite.csproj -c Release
+dotnet run --project Tools/ReplayLab/ReplayLab.csproj -c Release -- --timeline-smoke
+dotnet run --project Tools/ReplayLab/ReplayLab.csproj -c Release -- --similarity Tools/ReplayLab/similarity/korean-jamo-regression.json
+dotnet run --project Tools/ReplayLab/ReplayLab.csproj -c Release -- Tools/ReplayLab/fixtures/smoke-korean-short Tools/ReplayLab/fixtures/smoke-korean-short/expected.json
+dotnet build OwTranslateLite.csproj -c Release
 ```
 
 Expected fixture metrics:
