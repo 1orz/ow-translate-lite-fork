@@ -5,8 +5,11 @@ namespace OwTranslateLite.Core;
 
 public sealed class AppSettings
 {
+    public int DataSchemaVersion { get; set; } = ConfigStore.CurrentDataSchemaVersion;
     public bool FirstRun { get; set; } = true;
     public bool ShowQuickStart { get; set; } = true;
+    public string ThemeMode { get; set; } = "Dark";
+    public string IgnoredUpdateVersion { get; set; } = "";
     public string OcrEngine { get; set; } = "OneOCR";
     public string OcrLanguage { get; set; } = "auto";
     public string TranslationProvider { get; set; } = "DeepSeek";
@@ -28,7 +31,10 @@ public sealed class AppSettings
     public bool OverlayClickThrough { get; set; } = true;
     public bool KeepOverlayVisible { get; set; }
     public bool ShowReplyInputBar { get; set; } = true;
-    public bool EnableDedupeDebugLog { get; set; }
+    public bool EnableDebugDiagnostics { get; set; }
+    [JsonPropertyName("enableDedupeDebugLog")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? LegacyEnableDedupeDebugLog { get; set; }
     public bool SaveScreenshotsOnTranslation { get; set; }
     public double? OverlayLeft { get; set; } = 42;
     public double? OverlayTop { get; set; } = 151;

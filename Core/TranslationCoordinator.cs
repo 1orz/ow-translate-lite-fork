@@ -322,7 +322,7 @@ public sealed class TranslationCoordinator
 
     private void LogDedupe(string message)
     {
-        if (_settings.EnableDedupeDebugLog)
+        if (_settings.EnableDebugDiagnostics)
         {
             _dedupeLog?.Invoke(message);
         }

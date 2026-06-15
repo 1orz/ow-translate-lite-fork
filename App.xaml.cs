@@ -49,7 +49,7 @@ public partial class App : Application
     {
         try
         {
-            Directory.CreateDirectory(ConfigStore.AppDirectory);
+            ConfigStore.InitializeDataLayout();
             File.AppendAllText(
                 ConfigStore.CrashLogPath,
                 $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]\n{text}\n\n",

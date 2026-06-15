@@ -124,7 +124,7 @@ public partial class MainWindow : Window
             ReplyInputBarCheck.IsChecked = settings.ShowReplyInputBar;
             ReplyHotkeyCheck.IsChecked = settings.EnableReplyHotkey;
             SelectCombo(ReplyHotkeyCombo, settings.ReplyHotkey);
-            DedupeDebugCheck.IsChecked = settings.EnableDedupeDebugLog;
+            DebugDiagnosticsCheck.IsChecked = settings.EnableDebugDiagnostics;
             SaveScreenshotsCheck.IsChecked = settings.SaveScreenshotsOnTranslation;
             FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
             UpdateProviderPreset();
@@ -153,7 +153,7 @@ public partial class MainWindow : Window
         settings.ShowReplyInputBar = ReplyInputBarCheck.IsChecked == true;
         settings.EnableReplyHotkey = ReplyHotkeyCheck.IsChecked == true;
         settings.ReplyHotkey = GetComboText(ReplyHotkeyCombo);
-        settings.EnableDedupeDebugLog = DedupeDebugCheck.IsChecked == true;
+        settings.EnableDebugDiagnostics = DebugDiagnosticsCheck.IsChecked == true;
         settings.SaveScreenshotsOnTranslation = SaveScreenshotsCheck.IsChecked == true;
         SaveOverlayBounds(settings);
         _config.Save();
@@ -607,26 +607,20 @@ public partial class MainWindow : Window
         AddLog($"已打开数据目录：{ConfigStore.AppDirectory}");
     }
 
-    private void OpenRuntimeLog_Click(object sender, RoutedEventArgs e)
+    private void OpenLogsDirectory_Click(object sender, RoutedEventArgs e)
     {
-        _diagnostics.OpenRuntimeLog();
-        AddLog($"已打开日志：{ConfigStore.RuntimeLogPath}");
+        _diagnostics.OpenLogsDirectory();
+        AddLog($"已打开日志文件夹：{ConfigStore.LogsDirectory}");
     }
 
-    private void OpenDedupeLog_Click(object sender, RoutedEventArgs e)
-    {
-        _diagnostics.OpenDedupeLog();
-        AddLog($"已打开去重日志：{ConfigStore.DedupeLogPath}");
-    }
-
-    private void ExportDiagnostics_Click(object sender, RoutedEventArgs e)
+    private void ExportFeedbackPackage_Click(object sender, RoutedEventArgs e)
     {
         SaveSettingsFromUi();
-        string diagnosticsPath = _diagnostics.ExportDiagnostics(
+        string diagnosticsPath = _diagnostics.ExportFeedbackPackage(
             _config.Settings,
             LogList.Items.Cast<object>().Select(static item => item.ToString() ?? ""),
             CreateRuntimeDiagnosticsSnapshot());
-        AddLog($"已导出诊断：{diagnosticsPath}");
+        AddLog($"已导出反馈包：{diagnosticsPath}");
     }
 
     private void FrameRecording_Click(object sender, RoutedEventArgs e)
@@ -1154,12 +1148,12 @@ public partial class MainWindow : Window
 
     private void AppendDedupeLog(string message)
     {
-        if (!_config.Settings.EnableDedupeDebugLog)
+        if (!_config.Settings.EnableDebugDiagnostics)
         {
             return;
         }
 
-        _diagnostics.AppendDedupeLog(message);
+        _diagnostics.AppendDebugLog(message);
     }
 
     private RuntimeDiagnosticsSnapshot CreateRuntimeDiagnosticsSnapshot()

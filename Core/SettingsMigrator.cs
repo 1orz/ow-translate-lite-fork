@@ -21,6 +21,13 @@ public static class SettingsMigrator
             settings.ApiKey = apiKey;
         }
 
+        if (settings.LegacyEnableDedupeDebugLog is bool legacyDebugLog)
+        {
+            settings.EnableDebugDiagnostics = legacyDebugLog;
+            settings.LegacyEnableDedupeDebugLog = null;
+            changed = true;
+        }
+
         changed |= Normalize(settings);
         return new SettingsMigrationResult(changed, migratedSecret);
     }
@@ -30,12 +37,32 @@ public static class SettingsMigrator
         settings.ApiKey = settings.ApiKey.Trim();
         settings.ApiKeyProtected = SecretStore.ProtectIfChanged(settings.ApiKey, settings.ApiKeyProtected);
         settings.LegacyPlainTextApiKey = null;
+        settings.LegacyEnableDedupeDebugLog = null;
         _ = Normalize(settings);
     }
 
     private static bool Normalize(AppSettings settings)
     {
         bool changed = false;
+        if (settings.DataSchemaVersion < ConfigStore.CurrentDataSchemaVersion)
+        {
+            settings.DataSchemaVersion = ConfigStore.CurrentDataSchemaVersion;
+            changed = true;
+        }
+
+        string themeMode = settings.ThemeMode is "Light" ? "Light" : "Dark";
+        if (!string.Equals(settings.ThemeMode, themeMode, StringComparison.Ordinal))
+        {
+            settings.ThemeMode = themeMode;
+            changed = true;
+        }
+
+        if (settings.IgnoredUpdateVersion is null)
+        {
+            settings.IgnoredUpdateVersion = "";
+            changed = true;
+        }
+
         if (!string.Equals(settings.OcrEngine, "OneOCR", StringComparison.Ordinal))
         {
             settings.OcrEngine = "OneOCR";

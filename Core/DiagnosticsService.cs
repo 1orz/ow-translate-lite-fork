@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 
@@ -9,46 +10,51 @@ public sealed class DiagnosticsService
 {
     public void OpenAppDirectory()
     {
-        Directory.CreateDirectory(ConfigStore.AppDirectory);
+        ConfigStore.InitializeDataLayout();
         OpenShellPath(ConfigStore.AppDirectory);
     }
 
-    public void OpenRuntimeLog()
+    public void OpenLogsDirectory()
     {
-        EnsureTextFile(ConfigStore.RuntimeLogPath, "OW Translator Lite runtime log\n");
-        OpenShellPath(ConfigStore.RuntimeLogPath);
+        ConfigStore.InitializeDataLayout();
+        OpenShellPath(ConfigStore.LogsDirectory);
     }
 
-    public void OpenDedupeLog()
-    {
-        EnsureTextFile(ConfigStore.DedupeLogPath, "OW Translator Lite dedupe debug log\n");
-        OpenShellPath(ConfigStore.DedupeLogPath);
-    }
-
-    public string ExportDiagnostics(
+    public string ExportFeedbackPackage(
         AppSettings settings,
         IEnumerable<string> uiLogLines,
         RuntimeDiagnosticsSnapshot? runtime)
     {
-        Directory.CreateDirectory(ConfigStore.AppDirectory);
-        string diagnosticsPath = Path.Combine(
-            ConfigStore.AppDirectory,
-            $"diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+        ConfigStore.InitializeDataLayout();
+        string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        string packagePath = Path.Combine(
+            ConfigStore.DiagnosticsDirectory,
+            $"feedback-{timestamp}.zip");
 
-        File.WriteAllText(
-            diagnosticsPath,
-            BuildDiagnosticsReport(settings, uiLogLines, runtime),
-            new UTF8Encoding(false));
+        using (FileStream stream = File.Create(packagePath))
+        using (ZipArchive archive = new(stream, ZipArchiveMode.Create))
+        {
+            AddTextEntry(
+                archive,
+                "diagnostics.txt",
+                BuildDiagnosticsReport(settings, uiLogLines, runtime));
+            AddFileEntryIfExists(archive, ConfigStore.RuntimeLogPath, "logs/runtime.log");
+            AddFileEntryIfExists(archive, ConfigStore.CrashLogPath, "logs/crash.log");
+            if (settings.EnableDebugDiagnostics)
+            {
+                AddFileEntryIfExists(archive, ConfigStore.DebugLogPath, "logs/debug.log");
+            }
+        }
 
-        OpenShellPath(ConfigStore.AppDirectory);
-        return diagnosticsPath;
+        OpenShellPath(ConfigStore.DiagnosticsDirectory);
+        return packagePath;
     }
 
     public void AppendRuntimeLog(string line)
     {
         try
         {
-            Directory.CreateDirectory(ConfigStore.AppDirectory);
+            ConfigStore.InitializeDataLayout();
             File.AppendAllText(
                 ConfigStore.RuntimeLogPath,
                 line + Environment.NewLine,
@@ -60,19 +66,19 @@ public sealed class DiagnosticsService
         }
     }
 
-    public void AppendDedupeLog(string message)
+    public void AppendDebugLog(string message)
     {
         try
         {
-            Directory.CreateDirectory(ConfigStore.AppDirectory);
+            ConfigStore.InitializeDataLayout();
             File.AppendAllText(
-                ConfigStore.DedupeLogPath,
+                ConfigStore.DebugLogPath,
                 $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}",
                 new UTF8Encoding(false));
         }
         catch
         {
-            // Dedupe debug logging is optional and must not affect OCR or translation.
+            // Debug logging is optional and must not affect OCR or translation.
         }
     }
 
@@ -93,9 +99,12 @@ public sealed class DiagnosticsService
         builder.AppendLine($"SettingsPath: {ConfigStore.SettingsPath}");
         builder.AppendLine($"RuntimeLogPath: {ConfigStore.RuntimeLogPath}");
         builder.AppendLine($"CrashLogPath: {ConfigStore.CrashLogPath}");
-        builder.AppendLine($"DedupeLogPath: {ConfigStore.DedupeLogPath}");
+        builder.AppendLine($"DebugLogPath: {ConfigStore.DebugLogPath}");
         builder.AppendLine();
         builder.AppendLine("== Settings ==");
+        builder.AppendLine($"DataSchemaVersion: {settings.DataSchemaVersion}");
+        builder.AppendLine($"ThemeMode: {settings.ThemeMode}");
+        builder.AppendLine($"IgnoredUpdateVersion: {settings.IgnoredUpdateVersion}");
         builder.AppendLine($"OcrEngine: {settings.OcrEngine}");
         builder.AppendLine($"OcrLanguage: {settings.OcrLanguage}");
         builder.AppendLine($"TranslationProvider: {settings.TranslationProvider}");
@@ -113,7 +122,8 @@ public sealed class DiagnosticsService
         builder.AppendLine($"OverlayClickThrough: {settings.OverlayClickThrough}");
         builder.AppendLine($"KeepOverlayVisible: {settings.KeepOverlayVisible}");
         builder.AppendLine($"ShowReplyInputBar: {settings.ShowReplyInputBar}");
-        builder.AppendLine($"EnableDedupeDebugLog: {settings.EnableDedupeDebugLog}");
+        builder.AppendLine($"EnableDebugDiagnostics: {settings.EnableDebugDiagnostics}");
+        builder.AppendLine($"SaveScreenshotsOnTranslation: {settings.SaveScreenshotsOnTranslation}");
         builder.AppendLine($"OverlayBounds: {FormatBounds(settings)}");
         builder.AppendLine($"CaptureRegion: {FormatRegion(settings.CaptureRegion)}");
         if (runtime is not null)
@@ -139,7 +149,10 @@ public sealed class DiagnosticsService
 
         AppendFileTail(builder, ConfigStore.RuntimeLogPath, "Runtime Log Tail", 120);
         AppendFileTail(builder, ConfigStore.CrashLogPath, "Crash Log Tail", 120);
-        AppendFileTail(builder, ConfigStore.DedupeLogPath, "Dedupe Debug Log Tail", 200);
+        if (settings.EnableDebugDiagnostics)
+        {
+            AppendFileTail(builder, ConfigStore.DebugLogPath, "Debug Log Tail", 200);
+        }
 
         return builder.ToString();
     }
@@ -194,12 +207,28 @@ public sealed class DiagnosticsService
         }
     }
 
-    private static void EnsureTextFile(string path, string initialContent)
+    private static void AddTextEntry(ZipArchive archive, string entryName, string content)
     {
-        Directory.CreateDirectory(ConfigStore.AppDirectory);
-        if (!File.Exists(path))
+        ZipArchiveEntry entry = archive.CreateEntry(entryName, CompressionLevel.Fastest);
+        using Stream entryStream = entry.Open();
+        using StreamWriter writer = new(entryStream, new UTF8Encoding(false));
+        writer.Write(content);
+    }
+
+    private static void AddFileEntryIfExists(ZipArchive archive, string sourcePath, string entryName)
+    {
+        if (!File.Exists(sourcePath))
         {
-            File.WriteAllText(path, initialContent, new UTF8Encoding(false));
+            return;
+        }
+
+        try
+        {
+            archive.CreateEntryFromFile(sourcePath, entryName, CompressionLevel.Fastest);
+        }
+        catch
+        {
+            AddTextEntry(archive, $"{entryName}.unavailable.txt", "Unable to include this log file.");
         }
     }
 
