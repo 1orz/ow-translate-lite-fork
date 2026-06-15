@@ -32,7 +32,7 @@
         </Style>
 
         <Style x:Key="GuideImageFrameStyle" TargetType="{x:Type Border}">
-            <Setter Property="Background" Value="#0F1218"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrushApple}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>

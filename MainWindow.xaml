@@ -255,6 +255,48 @@
                             </Grid>
                         </Border>
 
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="128"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="外观" Style="{StaticResource SectionHeaderTextStyle}"/>
+                                    <TextBlock Text="主窗口和快速上手主题。"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,14,0"/>
+                                </StackPanel>
+                                <ComboBox x:Name="ThemeModeCombo"
+                                          Grid.Column="1"
+                                          VerticalAlignment="Center"
+                                          SelectionChanged="ThemeMode_SelectionChanged">
+                                    <ComboBoxItem Content="深色" Tag="Dark"/>
+                                    <ComboBoxItem Content="浅色" Tag="Light"/>
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="联系与反馈" Style="{StaticResource SectionHeaderTextStyle}"/>
+                                <TextBlock Text="遇到无法启动、OCR 不识别、重复翻译或翻译框异常时，可以提交反馈。"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,8,0,12"/>
+                                <WrapPanel>
+                                    <Button Content="汇报 Bug" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="ReportBug_Click"/>
+                                    <Button Content="项目主页" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="OpenProjectHome_Click"/>
+                                    <Button Content="复制邮箱" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="CopyContactEmail_Click"/>
+                                </WrapPanel>
+                                <TextBlock Text="邮件反馈时如需排查，请附上“导出反馈包”生成的 zip。"
+                                           Style="{StaticResource CaptionTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+
                         <Expander Margin="0,0,0,12" Foreground="{StaticResource TextBrush}">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal">

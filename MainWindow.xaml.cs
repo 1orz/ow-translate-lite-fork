@@ -27,6 +27,9 @@ public partial class MainWindow : Window
     private const int MaxOverflowTranslationBatchSize = 30;
     private const int MaxTranslationRetries = 2;
     private const int ReplyHotkeyId = 0x4F57;
+    private const string ProjectHomeUrl = "https://github.com/reverieach/ow-translate-lite";
+    private const string ProjectIssuesUrl = "https://github.com/reverieach/ow-translate-lite/issues/new";
+    private const string ContactEmail = "reverie-ach@outlook.com";
 
     private readonly ConfigStore _config = new();
     private readonly RecentChatLanguageTracker _recentChatLanguages = new();
@@ -78,6 +81,7 @@ public partial class MainWindow : Window
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _config.Load();
+        ThemeService.Apply(_config.Settings.ThemeMode);
         _glossary = OwGlossaryService.LoadDefault();
         _coordinator = CreateCoordinator();
         LoadSettingsToUi();
@@ -128,6 +132,7 @@ public partial class MainWindow : Window
             ReplyInputBarCheck.IsChecked = settings.ShowReplyInputBar;
             ReplyHotkeyCheck.IsChecked = settings.EnableReplyHotkey;
             SelectCombo(ReplyHotkeyCombo, settings.ReplyHotkey);
+            SelectCombo(ThemeModeCombo, settings.ThemeMode);
             DebugDiagnosticsCheck.IsChecked = settings.EnableDebugDiagnostics;
             SaveScreenshotsCheck.IsChecked = settings.SaveScreenshotsOnTranslation;
             FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
@@ -157,6 +162,7 @@ public partial class MainWindow : Window
         settings.ShowReplyInputBar = ReplyInputBarCheck.IsChecked == true;
         settings.EnableReplyHotkey = ReplyHotkeyCheck.IsChecked == true;
         settings.ReplyHotkey = GetComboText(ReplyHotkeyCombo);
+        settings.ThemeMode = ThemeService.Normalize(GetComboText(ThemeModeCombo));
         settings.EnableDebugDiagnostics = DebugDiagnosticsCheck.IsChecked == true;
         settings.SaveScreenshotsOnTranslation = SaveScreenshotsCheck.IsChecked == true;
         SaveOverlayBounds(settings);
@@ -278,6 +284,20 @@ public partial class MainWindow : Window
     private void BetaDebugSettings_Changed(object sender, RoutedEventArgs e)
     {
         AutoSaveSettings();
+    }
+
+    private void ThemeMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _isLoadingSettings)
+        {
+            return;
+        }
+
+        SaveSettingsFromUi();
+        ThemeService.Apply(_config.Settings.ThemeMode);
+        AddLog(_config.Settings.ThemeMode == ThemeService.Light
+            ? "已切换为浅色主题。"
+            : "已切换为深色主题。");
     }
 
     private void ReplyHotkeySettings_Changed(object sender, RoutedEventArgs e)
@@ -625,6 +645,26 @@ public partial class MainWindow : Window
             LogList.Items.Cast<object>().Select(static item => item.ToString() ?? ""),
             CreateRuntimeDiagnosticsSnapshot());
         AddLog($"已导出反馈包：{diagnosticsPath}");
+    }
+
+    private void ReportBug_Click(object sender, RoutedEventArgs e)
+    {
+        string title = Uri.EscapeDataString("[Bug] 请简要描述问题");
+        string body = Uri.EscapeDataString(CreateIssueTemplate());
+        OpenShellPath($"{ProjectIssuesUrl}?title={title}&body={body}");
+        AddLog("已打开 GitHub Bug 反馈页面。");
+    }
+
+    private void OpenProjectHome_Click(object sender, RoutedEventArgs e)
+    {
+        OpenShellPath(ProjectHomeUrl);
+        AddLog("已打开项目主页。");
+    }
+
+    private void CopyContactEmail_Click(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Clipboard.SetText(ContactEmail);
+        AddLog($"已复制联系邮箱：{ContactEmail}");
     }
 
     private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
@@ -1723,6 +1763,25 @@ public partial class MainWindow : Window
         }
 
         return baseDirectory;
+    }
+
+    private static string CreateIssueTemplate()
+    {
+        string version = UpdateService.GetCurrentVersion();
+        string installPath = GetPackageRootDirectory();
+        string hasCjkPath = ContainsCjk(installPath) ? "是" : "否";
+        return $"""
+               ## 问题描述
+               请描述你遇到的问题、发生场景和复现步骤。
+
+               ## 环境
+               - OW Translator Lite: {version}
+               - Windows: {Environment.OSVersion}
+               - 安装路径包含中文: {hasCjkPath}
+
+               ## 诊断文件
+               如需排查，请在主窗口点击“导出反馈包”，并把生成的 zip 拖到这个 Issue 中。
+               """;
     }
 
     private static void OpenShellPath(string path)
