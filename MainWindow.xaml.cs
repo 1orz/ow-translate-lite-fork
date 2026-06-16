@@ -735,9 +735,8 @@ public partial class MainWindow : Window
                     "检查更新",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+                AddLog($"检查更新失败：{ex.Message}");
             }
-
-            AddLog($"检查更新失败：{ex.Message}");
         }
         finally
         {
