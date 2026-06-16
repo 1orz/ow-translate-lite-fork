@@ -80,7 +80,7 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="StopButton" Content="暂停" Width="86" Click="Stop_Click"/>
-                        <Button x:Name="StartButton" Content="开始" Width="96" Style="{StaticResource PrimaryButtonStyle}" Click="Start_Click"/>
+                        <Button x:Name="StartButton" Content="开始" Width="96" Style="{StaticResource StartButtonStyle}" Click="Start_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -155,10 +155,10 @@
                                     </StackPanel>
                                 </Grid>
                                 <TextBlock x:Name="RegionText" Text="未选择区域" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                                <WrapPanel Margin="0,0,0,10">
-                                    <Button Content="选择翻译区域" Click="SelectArea_Click"/>
-                                    <Button x:Name="AdjustFrameButton" Content="调整翻译框" Click="AdjustFrame_Click"/>
-                                </WrapPanel>
+                                <UniformGrid Columns="2" Margin="0,0,0,12">
+                                    <Button Content="选择翻译区域" Margin="0,0,8,0" Click="SelectArea_Click"/>
+                                    <Button x:Name="AdjustFrameButton" Content="调整翻译框" Margin="0" Style="{StaticResource GhostButtonStyle}" Click="AdjustFrame_Click"/>
+                                </UniformGrid>
                                 <StackPanel>
                                     <Grid Margin="0,0,0,8" MinHeight="30">
                                         <Grid.ColumnDefinitions>
@@ -233,26 +233,20 @@
                         </Border>
 
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="使用说明" Style="{StaticResource SectionHeaderTextStyle}"/>
                                 <StackPanel>
-                                    <TextBlock Text="使用说明" Style="{StaticResource SectionHeaderTextStyle}"/>
                                     <TextBlock Text="查看 API 配置、翻译框设置和中文回话输入的图文指南。"
-                                               Foreground="{DynamicResource TextSecondaryBrush}"
-                                               TextWrapping="Wrap"
-                                               Margin="0,8,14,0"/>
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,8,0,12"/>
                                 </StackPanel>
-                                <Button Grid.Column="1"
-                                        Content="打开"
-                                        Width="72"
-                                        Margin="0"
-                                        VerticalAlignment="Center"
+                                <Button Content="打开使用说明"
+                                        Width="118"
+                                        HorizontalAlignment="Left"
                                         Style="{StaticResource GhostButtonStyle}"
                                         Click="OpenQuickStart_Click"/>
-                            </Grid>
+                            </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
@@ -285,12 +279,12 @@
                                            Foreground="{DynamicResource TextSecondaryBrush}"
                                            TextWrapping="Wrap"
                                            Margin="0,8,0,12"/>
-                                <WrapPanel>
-                                    <Button Content="汇报 Bug" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="ReportBug_Click"/>
-                                    <Button Content="项目主页" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="OpenProjectHome_Click"/>
-                                    <Button Content="复制邮箱" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="CopyContactEmail_Click"/>
-                                </WrapPanel>
-                                <TextBlock Text="邮件反馈时如需排查，请附上“导出反馈包”生成的 zip。"
+                                <UniformGrid Columns="3" Margin="0,0,0,8">
+                                    <Button Content="汇报 Bug" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,0" Click="ReportBug_Click"/>
+                                    <Button Content="项目主页" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,0" Click="OpenProjectHome_Click"/>
+                                    <Button Content="复制邮箱" Style="{StaticResource GhostButtonStyle}" Margin="0" Click="CopyContactEmail_Click"/>
+                                </UniformGrid>
+                                <TextBlock Text="邮件反馈时如需排查，请附上 Beta Tools 里的“导出反馈包”生成的 zip。"
                                            Style="{StaticResource CaptionTextStyle}"
                                            TextWrapping="Wrap"
                                            Margin="0,4,0,0"/>
@@ -306,13 +300,13 @@
                             </Expander.Header>
                             <Border Style="{StaticResource CardBorderStyle}" Margin="0,8,0,0">
                                 <StackPanel>
-                                    <WrapPanel Margin="0,0,0,10">
+                                    <UniformGrid Columns="2" Margin="0,0,0,10">
                                         <Button Content="打开数据目录" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="OpenDataDirectory_Click"/>
-                                        <Button Content="打开日志文件夹" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="OpenLogsDirectory_Click"/>
+                                        <Button Content="打开日志文件夹" Style="{StaticResource GhostButtonStyle}" Margin="0,0,0,8" Click="OpenLogsDirectory_Click"/>
                                         <Button Content="导出反馈包" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="ExportFeedbackPackage_Click"/>
-                                        <Button Content="检查更新" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,8" Click="CheckForUpdates_Click"/>
-                                        <Button Content="清除本机数据" Style="{StaticResource DangerButtonStyle}" Margin="0,0,8,8" Click="ClearUserData_Click"/>
-                                    </WrapPanel>
+                                        <Button Content="检查更新" Style="{StaticResource GhostButtonStyle}" Margin="0,0,0,8" Click="CheckForUpdates_Click"/>
+                                        <Button Content="清除本机数据" Style="{StaticResource DangerButtonStyle}" Margin="0,0,8,0" Click="ClearUserData_Click"/>
+                                    </UniformGrid>
                                     <Grid Margin="0,0,0,8" MinHeight="30">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition/>

@@ -34,6 +34,11 @@ public static class ThemeService
         SetColor(resources, "ColorText", palette.Text);
         SetColor(resources, "ColorTextSecondary", palette.TextSecondary);
         SetColor(resources, "ColorTextMuted", palette.TextMuted);
+        SetColor(resources, "ColorStartButton", palette.StartButton);
+        SetColor(resources, "ColorStartButtonHover", palette.StartButtonHover);
+        SetColor(resources, "ColorGhostButton", palette.GhostButton);
+        SetColor(resources, "ColorGhostButtonHover", palette.GhostButtonHover);
+        SetColor(resources, "ColorSwitchKnob", palette.SwitchKnob);
 
         SetBrush(resources, "WindowBrush", palette.Window);
         SetBrush(resources, "SurfaceBrush", palette.Surface);
@@ -50,6 +55,11 @@ public static class ThemeService
         SetBrush(resources, "TextBrush", palette.Text);
         SetBrush(resources, "TextSecondaryBrush", palette.TextSecondary);
         SetBrush(resources, "TextMutedBrush", palette.TextMuted);
+        SetBrush(resources, "StartButtonBrush", palette.StartButton);
+        SetBrush(resources, "StartButtonHoverBrush", palette.StartButtonHover);
+        SetBrush(resources, "GhostButtonBrush", palette.GhostButton);
+        SetBrush(resources, "GhostButtonHoverBrush", palette.GhostButtonHover);
+        SetBrush(resources, "SwitchKnobBrush", palette.SwitchKnob);
     }
 
     private static void SetColor(ResourceDictionary resources, string key, MediaColor color)
@@ -101,7 +111,12 @@ public static class ThemeService
         MediaColor Danger,
         MediaColor Text,
         MediaColor TextSecondary,
-        MediaColor TextMuted)
+        MediaColor TextMuted,
+        MediaColor StartButton,
+        MediaColor StartButtonHover,
+        MediaColor GhostButton,
+        MediaColor GhostButtonHover,
+        MediaColor SwitchKnob)
     {
         public static ThemePalette Dark { get; } = new(
             MediaColor.FromRgb(0x0B, 0x0C, 0x0F),
@@ -118,7 +133,12 @@ public static class ThemeService
             MediaColor.FromRgb(0xFF, 0x45, 0x3A),
             MediaColor.FromRgb(0xF5, 0xF5, 0xF7),
             MediaColor.FromRgb(0xA1, 0xA1, 0xAA),
-            MediaColor.FromRgb(0x6E, 0x76, 0x81));
+            MediaColor.FromRgb(0x6E, 0x76, 0x81),
+            MediaColor.FromRgb(0x30, 0xD1, 0x58),
+            MediaColor.FromRgb(0x34, 0xC7, 0x59),
+            MediaColor.FromRgb(0x1C, 0x1F, 0x26),
+            MediaColor.FromRgb(0x24, 0x28, 0x32),
+            MediaColor.FromRgb(0xFF, 0xFF, 0xFF));
 
         public static ThemePalette Light { get; } = new(
             MediaColor.FromRgb(0xF5, 0xF7, 0xFA),
@@ -135,6 +155,11 @@ public static class ThemeService
             MediaColor.FromRgb(0xD7, 0x00, 0x15),
             MediaColor.FromRgb(0x10, 0x13, 0x18),
             MediaColor.FromRgb(0x4E, 0x59, 0x69),
-            MediaColor.FromRgb(0x7B, 0x84, 0x94));
+            MediaColor.FromRgb(0x7B, 0x84, 0x94),
+            MediaColor.FromRgb(0x34, 0xC7, 0x59),
+            MediaColor.FromRgb(0x30, 0xB8, 0x50),
+            MediaColor.FromRgb(0xF1, 0xF4, 0xF8),
+            MediaColor.FromRgb(0xE7, 0xEC, 0xF3),
+            MediaColor.FromRgb(0xFF, 0xFF, 0xFF));
     }
 }

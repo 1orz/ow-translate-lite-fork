@@ -1641,10 +1641,19 @@ public partial class MainWindow : Window
         AdjustFrameButton.Content = _isAdjustingTranslationFrame
             ? "完成调整"
             : "调整翻译框";
-        AdjustFrameButton.Background = _isAdjustingTranslationFrame
-            ? System.Windows.Media.Brushes.LightGoldenrodYellow
-            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(155, 183, 240));
-        AdjustFrameButton.BorderBrush = AdjustFrameButton.Background;
+        if (_isAdjustingTranslationFrame)
+        {
+            AdjustFrameButton.SetResourceReference(System.Windows.Controls.Control.BackgroundProperty, "PrimaryBrush");
+            AdjustFrameButton.SetResourceReference(System.Windows.Controls.Control.BorderBrushProperty, "PrimaryBrush");
+            AdjustFrameButton.Foreground = System.Windows.Media.Brushes.White;
+        }
+        else
+        {
+            AdjustFrameButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+            AdjustFrameButton.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
+            AdjustFrameButton.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
+        }
+
         FrameAdjustHint.Visibility = _isAdjustingTranslationFrame
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -1734,7 +1743,7 @@ public partial class MainWindow : Window
                - 安装路径包含中文: {hasCjkPath}
 
                ## 诊断文件
-               如需排查，请在主窗口点击“导出反馈包”，并把生成的 zip 拖到这个 Issue 中。
+               如需排查，请在主窗口左侧 Beta Tools 中点击“导出反馈包”，并把生成的 zip 拖到这个 Issue 中。
                """;
     }
 

@@ -49,4 +49,4 @@ OWTranslatorLite/
 
 运行日志位于 `%AppData%\OWTranslatorLite\logs\`，诊断导出位于 `%AppData%\OWTranslatorLite\diagnostics\`。
 
-遇到无法启动、OCR 不识别、重复翻译、翻译框异常等问题时，请点击“导出反馈包”，并在 GitHub Issue 或邮件反馈中附上生成的 zip。API Key 不会明文写入反馈包；只有开启“诊断模式”时才会包含高级 debug 日志。
+遇到无法启动、OCR 不识别、重复翻译、翻译框异常等问题时，请在主窗口左侧 Beta Tools 中点击“导出反馈包”，并在 GitHub Issue 或邮件反馈中附上生成的 zip。API Key 不会明文写入反馈包；只有开启“诊断模式”时才会包含高级 debug 日志。

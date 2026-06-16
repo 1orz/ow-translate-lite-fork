@@ -16,6 +16,11 @@
     <Color x:Key="ColorText">#F5F5F7</Color>
     <Color x:Key="ColorTextSecondary">#A1A1AA</Color>
     <Color x:Key="ColorTextMuted">#6E7681</Color>
+    <Color x:Key="ColorStartButton">#30D158</Color>
+    <Color x:Key="ColorStartButtonHover">#34C759</Color>
+    <Color x:Key="ColorGhostButton">#1C1F26</Color>
+    <Color x:Key="ColorGhostButtonHover">#242832</Color>
+    <Color x:Key="ColorSwitchKnob">#FFFFFF</Color>
 
     <SolidColorBrush x:Key="WindowBrush" Color="{StaticResource ColorWindow}"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource ColorSurface}"/>
@@ -32,6 +37,11 @@
     <SolidColorBrush x:Key="TextBrush" Color="{StaticResource ColorText}"/>
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource ColorTextSecondary}"/>
     <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource ColorTextMuted}"/>
+    <SolidColorBrush x:Key="StartButtonBrush" Color="{StaticResource ColorStartButton}"/>
+    <SolidColorBrush x:Key="StartButtonHoverBrush" Color="{StaticResource ColorStartButtonHover}"/>
+    <SolidColorBrush x:Key="GhostButtonBrush" Color="{StaticResource ColorGhostButton}"/>
+    <SolidColorBrush x:Key="GhostButtonHoverBrush" Color="{StaticResource ColorGhostButtonHover}"/>
+    <SolidColorBrush x:Key="SwitchKnobBrush" Color="{StaticResource ColorSwitchKnob}"/>
 
     <DropShadowEffect x:Key="PanelShadow" Color="#000000" BlurRadius="18" ShadowDepth="6" Opacity="0.18"/>
 
@@ -139,6 +149,40 @@
         <Setter Property="Padding" Value="18,0"/>
     </Style>
 
+    <Style x:Key="StartButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="{DynamicResource StartButtonBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource StartButtonBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Padding" Value="18,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="17">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"
+                                          RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource StartButtonHoverBrush}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource StartButtonHoverBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="DangerButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="#28FF453A"/>
         <Setter Property="BorderBrush" Value="#66FF453A"/>
@@ -146,9 +190,33 @@
     </Style>
 
     <Style x:Key="GhostButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource GhostButtonBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderSoftBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="17">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"
+                                          RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource GhostButtonHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="WindowCaptionButtonStyle" TargetType="{x:Type Button}">
@@ -406,7 +474,7 @@
                                     Width="18"
                                     Height="18"
                                     CornerRadius="9"
-                                    Background="{DynamicResource TextSecondaryBrush}"
+                                    Background="{DynamicResource SwitchKnobBrush}"
                                     HorizontalAlignment="Left"
                                     Margin="3,0,3,0">
                                 <Border.RenderTransform>
