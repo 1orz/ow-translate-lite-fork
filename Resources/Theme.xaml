@@ -16,8 +16,8 @@
     <Color x:Key="ColorText">#F5F5F7</Color>
     <Color x:Key="ColorTextSecondary">#A1A1AA</Color>
     <Color x:Key="ColorTextMuted">#6E7681</Color>
-    <Color x:Key="ColorStartButton">#0A84FF</Color>
-    <Color x:Key="ColorStartButtonHover">#2997FF</Color>
+    <Color x:Key="ColorStartButton">#4A8FE0</Color>
+    <Color x:Key="ColorStartButtonHover">#5B9BE8</Color>
     <Color x:Key="ColorGhostButton">#1C1F26</Color>
     <Color x:Key="ColorGhostButtonHover">#242832</Color>
     <Color x:Key="ColorSwitchKnob">#FFFFFF</Color>
@@ -127,7 +127,8 @@
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}"
-                                          RecognizesAccessKey="True"/>
+                                          RecognizesAccessKey="True"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -143,8 +144,8 @@
     </Style>
 
     <Style x:Key="PrimaryButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource StartButtonBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource StartButtonBrush}"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="Padding" Value="18,0"/>
         <Setter Property="Template">
@@ -158,12 +159,13 @@
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}"
-                                          RecognizesAccessKey="True"/>
+                                          RecognizesAccessKey="True"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
-                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource StartButtonHoverBrush}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource StartButtonHoverBrush}"/>
                             <Setter Property="Foreground" Value="White"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -192,7 +194,8 @@
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}"
-                                          RecognizesAccessKey="True"/>
+                                          RecognizesAccessKey="True"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -231,7 +234,8 @@
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Margin="{TemplateBinding Padding}"
-                                          RecognizesAccessKey="True"/>
+                                          RecognizesAccessKey="True"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -262,7 +266,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Button}">
                     <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="7">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
