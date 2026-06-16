@@ -64,12 +64,6 @@ public static class ThemeService
     private static void SetBrush(ResourceDictionary resources, string key, MediaColor color)
     {
         ResourceDictionary dictionary = FindDictionary(resources, key) ?? resources;
-        if (dictionary[key] is SolidColorBrush brush)
-        {
-            brush.Color = color;
-            return;
-        }
-
         dictionary[key] = new SolidColorBrush(color);
     }
 

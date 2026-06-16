@@ -23,6 +23,7 @@ public sealed class ConfigStore
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OWTranslatorLite");
 
     public static string SettingsPath { get; } = Path.Combine(AppDirectory, "settings.json");
+    public static string SettingsBackupPath { get; } = Path.Combine(AppDirectory, "settings.last-good.json");
     public static string LogsDirectory { get; } = Path.Combine(AppDirectory, "logs");
     public static string DiagnosticsDirectory { get; } = Path.Combine(AppDirectory, "diagnostics");
     public static string RuntimeLogPath { get; } = Path.Combine(LogsDirectory, "runtime.log");
@@ -39,31 +40,58 @@ public sealed class ConfigStore
         InitializeDataLayout();
         if (!File.Exists(SettingsPath))
         {
+            if (File.Exists(SettingsBackupPath))
+            {
+                try
+                {
+                    LoadFromPath(SettingsBackupPath, backupExistingOnMigrate: false);
+                    Save(backupExisting: false);
+                    return;
+                }
+                catch
+                {
+                    // Fall through to a fresh default settings file.
+                }
+            }
+
             Save();
             return;
         }
 
         try
         {
-            string json = File.ReadAllText(SettingsPath, Encoding.UTF8);
-            Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
-            if (SettingsMigrator.MigrateAfterLoad(Settings).Changed)
-            {
-                Save();
-            }
+            LoadFromPath(SettingsPath);
         }
         catch
         {
-            Settings = new AppSettings();
-            Save();
+            try
+            {
+                LoadFromPath(SettingsBackupPath, backupExistingOnMigrate: false);
+                Save(backupExisting: false);
+            }
+            catch
+            {
+                Settings = new AppSettings();
+                Save();
+            }
         }
     }
 
     public void Save()
     {
+        Save(backupExisting: true);
+    }
+
+    private void Save(bool backupExisting)
+    {
         InitializeDataLayout();
         SettingsMigrator.PrepareForSave(Settings);
         string json = JsonSerializer.Serialize(Settings, JsonOptions);
+        if (backupExisting)
+        {
+            BackupCurrentSettings();
+        }
+
         File.WriteAllText(SettingsPath, json, new UTF8Encoding(false));
     }
 
@@ -73,6 +101,7 @@ public sealed class ConfigStore
         Settings = new AppSettings();
 
         DeleteIfExists(SettingsPath);
+        DeleteIfExists(SettingsBackupPath);
         DeleteFiles(LogsDirectory, "*.log");
         DeleteFiles(DiagnosticsDirectory, "*.txt");
         DeleteFiles(DiagnosticsDirectory, "*.zip");
@@ -86,6 +115,36 @@ public sealed class ConfigStore
         }
 
         Save();
+    }
+
+    private void LoadFromPath(string path, bool backupExistingOnMigrate = true)
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("Settings file not found.", path);
+        }
+
+        string json = File.ReadAllText(path, Encoding.UTF8);
+        Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+        if (SettingsMigrator.MigrateAfterLoad(Settings).Changed)
+        {
+            Save(backupExistingOnMigrate);
+        }
+    }
+
+    private static void BackupCurrentSettings()
+    {
+        try
+        {
+            if (File.Exists(SettingsPath))
+            {
+                File.Copy(SettingsPath, SettingsBackupPath, overwrite: true);
+            }
+        }
+        catch
+        {
+            // Settings backup is a safety net; saving should still proceed if it fails.
+        }
     }
 
     public static void InitializeDataLayout()

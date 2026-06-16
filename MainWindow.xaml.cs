@@ -57,6 +57,7 @@ public partial class MainWindow : Window
     private bool _isRunning;
     private bool _isReplyModeActive;
     private bool _isLoadingSettings;
+    private bool _settingsLoaded;
     private bool _isAdjustingTranslationFrame;
     private int _burstOcrFramesRemaining;
     private int _consecutiveNoChatFrames;
@@ -85,6 +86,7 @@ public partial class MainWindow : Window
         _glossary = OwGlossaryService.LoadDefault();
         _coordinator = CreateCoordinator();
         LoadSettingsToUi();
+        _settingsLoaded = true;
         EnsureOverlay();
         ApplyOverlayVisibilityPreference(activate: false);
         ApplyRunningState();
@@ -148,6 +150,11 @@ public partial class MainWindow : Window
 
     private void SaveSettingsFromUi()
     {
+        if (!_settingsLoaded)
+        {
+            return;
+        }
+
         AppSettings settings = _config.Settings;
         settings.OcrEngine = "OneOCR";
         settings.OcrLanguage = "auto";
@@ -173,6 +180,11 @@ public partial class MainWindow : Window
 
     private void ApplyScreenshotSaveDirectory()
     {
+        if (_coordinator is null)
+        {
+            return;
+        }
+
         if (_config.Settings.SaveScreenshotsOnTranslation)
         {
             string repoRoot = AppContext.BaseDirectory;
@@ -1204,7 +1216,7 @@ public partial class MainWindow : Window
         _burstOcrFramesRemaining = 0;
         _consecutiveNoChatFrames = 0;
         ClearTranslationQueue();
-        _coordinator.ClearPendingTranslations();
+        _coordinator?.ClearPendingTranslations();
         ApplyRunningState();
         RefreshRuntimeMetrics();
 
