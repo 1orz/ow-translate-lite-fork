@@ -1,6 +1,6 @@
 # OW Translator Lite - AGENTS 维护指南
 
-本文档写给后续接手本项目的 AI agent/维护者。目标是避免重复摸索、避免把项目改回通用翻译器，并保留当前 beta 测试阶段的关键约束。
+本文档写给后续接手本项目的 AI agent/维护者。目标是避免重复摸索、避免把项目改回通用翻译器，并保留当前正式版阶段的关键约束。
 
 ## 项目定位
 
@@ -40,7 +40,7 @@
 ## 术语表维护规则
 
 - 术语表文件：`Resources/OwGlossary.zh-CN.json`。
-- 当前词库版本：`2026.06.08-beta3-glossary-v3`。
+- 当前词库版本：`2026.06.08-release-glossary-v3`。
 - 当前覆盖规模：约 302 个 entries、1672 个 terms/aliases。
 - 术语表主要服务 API prompt 的术语命中和中文锁定。
 - 只维护 OW 专用内容：
@@ -93,25 +93,26 @@
 - 透明度控制的是黑色背景透明度，文字必须保持清晰。
 - 鼠标穿透关闭后，用户应能拖动、调整大小和滚动 overlay。
 
-## Beta 测试模块
+## 诊断工具
 
-当前 beta 版程序内有“Beta 测试”入口：
+当前正式版程序内保留“诊断工具”入口：
 
 - 打开数据目录。
-- 打开日志。
-- 导出诊断。
+- 打开日志文件夹。
+- 导出反馈包。
 - 清除本机数据。
-- 翻译时保存原始截图（本地 OCR 样本采集）。
+- 检查更新。
+- 诊断模式。
 
-这些入口只为小范围测试排错服务，完整版可以移除。导出诊断必须脱敏 API Key，只能记录是否已配置。
+导出反馈包必须脱敏 API Key，只能记录是否已配置。诊断模式默认关闭，只有用户主动开启时才写入高级 debug 日志。
 
 相关文件：
 
 - `settings.json`：用户设置；API Key 通过 Windows DPAPI 保存为 `apiKeyProtected`，不要记录或分发明文。
 - `runtime.log`：程序内运行日志。
 - `crash.log`：未捕获异常日志。
-- `diagnostics-*.txt`：用户点击导出诊断生成的脱敏诊断文件。
-- `captured-screenshots/`：开发环境中启用“翻译时保存原始截图”后生成的原始截图样本；当前路径通过向上查找 `OwTranslateLite.csproj` 定位仓库根目录，发布包若要收集测试者样本，需要先把保存位置改到用户数据目录或可配置路径。
+- `diagnostics/feedback-*.zip`：用户点击导出反馈包生成的脱敏诊断压缩包。
+- `captured-screenshots/`：开发环境 OCR 样本目录；正式版 UI 不再暴露原始截图保存入口，不要提交。
 
 ## API 与模型
 
@@ -129,20 +130,19 @@
 E:\rstgametranslation\.dotnet\dotnet.exe build OwTranslateLite.csproj -c Release
 ```
 
-发布 beta 包：
+发布正式包：
 
 ```powershell
-E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Release -o E:\rstgametranslation\ow-translate-lite\dist\OWTranslatorLite-vX.Y.Z-portable-win-x64
+powershell -ExecutionPolicy Bypass -File Tools\PackageRelease.ps1
 ```
 
-发布后将对应 `Docs/BetaTest-*.md` 复制为包内 `README-BETA.md`，再压缩 `dist` 下的发布目录。
+发布脚本会将对应 `Docs/Release-vX.Y.Z.md` 复制为包内 `README.md`，再压缩 `dist` 下的发布目录。
 
 注意：
 
 - 不要每次小修都打包，用户要求确认测试完成后再最终打包时再做。
-- 如果是给测试者的新 beta，包名要带清晰版本号。
 - 自包含发布会带很多 .NET runtime DLL，这是正常的；不要手删不认识的 DLL，也不要随意移动 .NET host 依赖。OneOCR、Resources、UI 候选资源保持分目录。
-- 词库、文档、日志类小改默认只 build 验证，不自动 publish/zip，除非用户明确要求发布 beta 包。
+- 词库、文档、日志类小改默认只 build 验证，不自动 publish/zip，除非用户明确要求发布包。
 
 ## Git 维护约定
 
@@ -165,9 +165,9 @@ E:\rstgametranslation\.dotnet\dotnet.exe publish OwTranslateLite.csproj -c Relea
 
 ## 后续优先级
 
-1. 收集 beta 诊断日志和 `captured-screenshots/` 样本，优先解决测试者机器上的闪退、无响应、重复/漏翻和 OCR 识别不稳。
+1. 收集用户反馈包和开发环境 OCR 样本，优先解决真实机器上的闪退、无响应、重复/漏翻和 OCR 识别不稳。
 2. 继续增强 OCR 切块合并和有序锚点去重，优先使用通用相似度与实测样本验证。
 3. 继续验证 API Key DPAPI 迁移和异常恢复路径。
 4. 维护英语、日语、韩语 OW 术语和常见聊天表达。
 5. 暂不引入大体积本地翻译模型；竞技实时体验优先使用 DeepSeek/API + 术语表 + 缓存。
-6. beta 稳定后裁掉或隐藏测试入口，整理发布包结构，做正式版本说明。
+6. 保持发布包结构、诊断工具和正式版本说明简洁一致。

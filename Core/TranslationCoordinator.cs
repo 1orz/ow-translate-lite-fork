@@ -1,6 +1,4 @@
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
 using OwTranslateLite.Ocr;
 using OwTranslateLite.Translation;
 
@@ -16,8 +14,6 @@ public sealed class TranslationCoordinator
     private readonly TimelineAlignmentDetector _alignmentDetector = new();
     private long _frameId;
 
-    public string? ScreenshotSaveDirectory { get; set; }
-    public FrameSequenceRecorder? FrameSequenceRecorder { get; set; }
     public bool ChatCycleJustReset { get; private set; }
     public bool HasVisibleChat { get; private set; }
     public IReadOnlyList<ParsedChatLine> LastVisibleChatLines { get; private set; } = Array.Empty<ParsedChatLine>();
@@ -139,30 +135,7 @@ public sealed class TranslationCoordinator
         IReadOnlyList<OcrTextLine> processedOcrLines = OcrTextPostProcessor.Process(rawOcrLines);
         IReadOnlyList<ParsedChatLine> chatLines = _parser.Parse(processedOcrLines);
         FrameDetectionResult detectionResult = DetectNewLinesFromParsedLines(chatLines);
-        FrameSequenceRecorder?.RecordFrame(
-            bitmap,
-            captureRegion,
-            rawOcrLines,
-            processedOcrLines,
-            chatLines,
-            detectionResult);
-
-        IReadOnlyList<ParsedChatLine> newLines = detectionResult.NewLines;
-        if (newLines.Count > 0 && ScreenshotSaveDirectory is not null)
-        {
-            try
-            {
-                Directory.CreateDirectory(ScreenshotSaveDirectory);
-                string file = Path.Combine(ScreenshotSaveDirectory, $"cap_{DateTime.Now:yyyyMMdd-HHmmss-fff}.png");
-                bitmap.Save(file, ImageFormat.Png);
-            }
-            catch
-            {
-                // Best-effort: don't disrupt the OCR pipeline if saving fails.
-            }
-        }
-
-        return newLines;
+        return detectionResult.NewLines;
     }
 
     public FrameDetectionResult DetectNewLinesFromParsedLines(IReadOnlyList<ParsedChatLine> chatLines)

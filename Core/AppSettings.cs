@@ -35,7 +35,6 @@ public sealed class AppSettings
     [JsonPropertyName("enableDedupeDebugLog")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? LegacyEnableDedupeDebugLog { get; set; }
-    public bool SaveScreenshotsOnTranslation { get; set; }
     public double? OverlayLeft { get; set; } = 42;
     public double? OverlayTop { get; set; } = 151;
     public double? OverlayWidth { get; set; } = 454;

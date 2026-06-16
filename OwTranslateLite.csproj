@@ -18,9 +18,9 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>false</PublishSingleFile>
-    <Version>0.2.0-beta.5</Version>
-    <FileVersion>0.2.0.5</FileVersion>
-    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <Company>OWTranslatorLite</Company>
     <Product>OW Translator Lite</Product>
     <Description>Lightweight Overwatch real-time OCR translation overlay for Chinese players.</Description>

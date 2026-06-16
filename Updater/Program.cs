@@ -222,8 +222,9 @@ namespace OWTranslatorLiteUpdater
                     progress.SetStatus("正在安装新版本...", 70);
                     CopyDirectory(packageApp, currentApp);
                     progress.SetStatus("正在更新启动文件...", 82);
-                    CopyIfExists(Path.Combine(packageRoot, "README-BETA.md"), Path.Combine(rootDirectory, "README-BETA.md"));
+                    CopyIfExists(Path.Combine(packageRoot, "README.md"), Path.Combine(rootDirectory, "README.md"));
                     CopyIfExists(Path.Combine(packageRoot, "OWTranslatorLite.exe"), Path.Combine(rootDirectory, "OWTranslatorLite.exe"));
+                    TryDeleteFile(Path.Combine(rootDirectory, "README-BETA.md"));
                     CleanOldBackups(rootDirectory, backupRoot);
                 }
                 catch

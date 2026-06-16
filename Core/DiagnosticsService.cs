@@ -88,7 +88,7 @@ public sealed class DiagnosticsService
         RuntimeDiagnosticsSnapshot? runtime)
     {
         StringBuilder builder = new();
-        builder.AppendLine("OW Translator Lite Beta Diagnostics");
+        builder.AppendLine("OW Translator Lite Diagnostics");
         builder.AppendLine($"GeneratedAt: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         builder.AppendLine($"Version: {Assembly.GetExecutingAssembly().GetName().Version}");
         builder.AppendLine($"OS: {Environment.OSVersion}");
@@ -123,7 +123,6 @@ public sealed class DiagnosticsService
         builder.AppendLine($"KeepOverlayVisible: {settings.KeepOverlayVisible}");
         builder.AppendLine($"ShowReplyInputBar: {settings.ShowReplyInputBar}");
         builder.AppendLine($"EnableDebugDiagnostics: {settings.EnableDebugDiagnostics}");
-        builder.AppendLine($"SaveScreenshotsOnTranslation: {settings.SaveScreenshotsOnTranslation}");
         builder.AppendLine($"OverlayBounds: {FormatBounds(settings)}");
         builder.AppendLine($"CaptureRegion: {FormatRegion(settings.CaptureRegion)}");
         if (runtime is not null)

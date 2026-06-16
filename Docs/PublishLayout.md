@@ -2,13 +2,13 @@
 
 OW Translator Lite is published as a self-contained Windows x64 WPF app. The real app must keep its .NET runtime files, native dependencies, OneOCR files, and resources together. Do not manually move DLLs out of the app publish directory.
 
-The beta.5 portable package uses an outer launcher so the user-facing root stays clean while the real self-contained app layout remains intact:
+The v1.0.0 portable package uses an outer launcher so the user-facing root stays clean while the real self-contained app layout remains intact:
 
 ```text
 OWTranslatorLite/
   OWTranslatorLite.exe      # small outer launcher
   OWTranslatorLiteUpdater.exe # small outer updater
-  README-BETA.md
+  README.md
   app/
     OWTranslatorLite.exe    # real self-contained WPF app
     *.dll
@@ -33,7 +33,7 @@ The script:
 - publishes the real app into `dist/OWTranslatorLite/app/`;
 - builds the outer launcher as `dist/OWTranslatorLite/OWTranslatorLite.exe`;
 - builds the outer updater as `dist/OWTranslatorLite/OWTranslatorLiteUpdater.exe`;
-- copies the matching `Docs/BetaTest-vX.Y.Z.md` as `README-BETA.md` when present;
+- copies the matching `Docs/Release-vX.Y.Z.md` as `README.md` when present;
 - creates `dist/OWTranslatorLite-vX.Y.Z-portable-win-x64.zip`;
 - creates `dist/OWTranslatorLite-vX.Y.Z-portable-win-x64.zip.sha256.txt`.
 

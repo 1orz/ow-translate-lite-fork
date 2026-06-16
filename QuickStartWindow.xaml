@@ -95,7 +95,7 @@
                                FontSize="14"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
-                    <TextBlock Text="v0.2.0 beta"
+                    <TextBlock Text="v1.0.0"
                                Foreground="{DynamicResource TextMutedBrush}"
                                FontSize="12"
                                Margin="10,1,0,0"

@@ -26,15 +26,14 @@ selected region
 - `Core/SecretStore.cs`: Windows DPAPI protection for local API keys.
 - `Core/SettingsMigrator.cs`: legacy setting normalization and API key migration.
 - `Core/OcrTextPostProcessor.cs`: player-boundary repair and geometry-first wrapped-line merge before parsing, including Korean continuation lines with incidental CJK OCR noise.
-- `Core/DiagnosticsService.cs`: beta diagnostics, runtime/crash/debug logs, and redacted feedback package export.
-- `Core/FrameSequenceRecorder.cs`: beta frame-sequence recording for ReplayLab fixtures.
+- `Core/DiagnosticsService.cs`: diagnostics tools, runtime/crash/debug logs, and redacted feedback package export.
 - `Core/FrameDiffGate.cs`: low-cost pixel signature gate used by the main loop to patrol the selected chat region without running OCR on stable frames.
 - `Core/ChatTimeline.cs`: authoritative ordered chat log. Message identity is the aligned timeline `Seq`, not content equality.
 - `Core/TimelineAlignmentDetector.cs`: suffix alignment between visible OW chat lines and the authoritative timeline, including cold start and after-empty safeguards.
 - `Core/KoreanJamoNormalizer.cs`: Hangul NFD/jamo normalization, whitespace-insensitive comparison, weighted jamo similarity, and public-data seeded confusion costs.
 - `Core/OwGlossaryService.cs`: glossary load, OCR normalization, prompt context, term locking.
 - `Core/OwChatParser.cs`: player-chat extraction and dominant-script filtering. Any Hangul/Kana player message is kept; Chinese-dominant lines without Hangul are treated as OW/system UI noise.
-- `Core/TranslationCoordinator.cs`: capture/OCR/parse/translate coordination, Timeline alignment, multi-frame confirmation, explicit translation retry, and optional raw screenshot capture for OCR lab fixtures when genuinely new chat lines are detected.
+- `Core/TranslationCoordinator.cs`: capture/OCR/parse/translate coordination, Timeline alignment, multi-frame confirmation, and explicit translation retry.
 - `Core/TranslationQueueStatusTracker.cs`: queue observability for diagnostics.
 - `Ocr/OneOcrEngine.cs`: native OneOCR wrapper.
 - `Ocr/OcrEngineManager.cs`: OneOCR instance reuse, serialization, and disposal boundary.
@@ -88,4 +87,4 @@ The seed table lives at `Resources/KoreanJamoConfusionCosts.json` and is copied 
 - Grow ReplayLab golden cases and use the variant summary to calibrate the jamo confusion table with real OW samples.
 - Add WGC capture for cases where GDI cannot capture exclusive/fullscreen content.
 - Consider migrating from DPAPI settings storage to Windows Credential Manager if the UX needs account-level secret management.
-- Remove or hide beta-only test entries before a formal release.
+- Keep diagnostics user-facing, but keep frame recording and screenshot corpus collection outside the release UI.

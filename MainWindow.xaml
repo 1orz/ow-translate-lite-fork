@@ -74,7 +74,7 @@
                         </Border>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="OW Translator Lite" FontSize="22" FontWeight="SemiBold"/>
-                            <TextBlock Text="v0.2.0 beta" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="1,4,0,0"/>
+                            <TextBlock Text="v1.0.0" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="1,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -284,7 +284,7 @@
                                     <Button Content="项目主页" Style="{StaticResource GhostButtonStyle}" Margin="0,0,8,0" Click="OpenProjectHome_Click"/>
                                     <Button Content="复制邮箱" Style="{StaticResource GhostButtonStyle}" Margin="0" Click="CopyContactEmail_Click"/>
                                 </UniformGrid>
-                                <TextBlock Text="邮件反馈时如需排查，请附上 Beta Tools 里的“导出反馈包”生成的 zip。"
+                                <TextBlock Text="邮件反馈时如需排查，请附上诊断工具里的“导出反馈包”生成的 zip。"
                                            Style="{StaticResource CaptionTextStyle}"
                                            TextWrapping="Wrap"
                                            Margin="0,4,0,0"/>
@@ -295,7 +295,7 @@
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource IconBug}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource WarningBrush}" Margin="0,0,8,0"/>
-                                    <TextBlock Text="Beta Tools" FontWeight="SemiBold"/>
+                                    <TextBlock Text="诊断工具" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Expander.Header>
                             <Border Style="{StaticResource CardBorderStyle}" Margin="0,8,0,0">
@@ -316,20 +316,8 @@
                                         <CheckBox x:Name="DebugDiagnosticsCheck"
                                                   Grid.Column="1"
                                                   Style="{StaticResource SwitchCheckBoxStyle}"
-                                                  Checked="BetaDebugSettings_Changed"
-                                                  Unchecked="BetaDebugSettings_Changed"/>
-                                    </Grid>
-                                    <Grid Margin="0,0,0,8" MinHeight="30">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="翻译时保存原始截图" VerticalAlignment="Center"/>
-                                        <CheckBox x:Name="SaveScreenshotsCheck"
-                                                  Grid.Column="1"
-                                                  Style="{StaticResource SwitchCheckBoxStyle}"
-                                                  Checked="BetaDebugSettings_Changed"
-                                                  Unchecked="BetaDebugSettings_Changed"/>
+                                                  Checked="DiagnosticsSettings_Changed"
+                                                  Unchecked="DiagnosticsSettings_Changed"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>

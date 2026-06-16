@@ -36,7 +36,6 @@ public partial class MainWindow : Window
     private readonly HotKeyService _replyHotKey = new(ReplyHotkeyId);
     private readonly DiagnosticsService _diagnostics = new();
     private readonly UpdateService _updateService = new();
-    private readonly FrameSequenceRecorder _frameSequenceRecorder = new();
     private readonly OverlayController _overlayController = new();
     private OwGlossaryService _glossary = null!;
     private TranslationCoordinator _coordinator = null!;
@@ -106,7 +105,6 @@ public partial class MainWindow : Window
         _replyTranslationCts?.Cancel();
         _fetchModelsCts?.Cancel();
         _updateCheckCts?.Cancel();
-        _frameSequenceRecorder.Stop();
         StopLoop(hideOverlay: false, clearOverlay: false);
         _ocrEngineManager.Dispose();
         SaveSettingsFromUi();
@@ -136,7 +134,6 @@ public partial class MainWindow : Window
             SelectCombo(ReplyHotkeyCombo, settings.ReplyHotkey);
             SelectCombo(ThemeModeCombo, settings.ThemeMode);
             DebugDiagnosticsCheck.IsChecked = settings.EnableDebugDiagnostics;
-            SaveScreenshotsCheck.IsChecked = settings.SaveScreenshotsOnTranslation;
             FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
             UpdateProviderPreset();
             UpdateRegionText();
@@ -171,43 +168,14 @@ public partial class MainWindow : Window
         settings.ReplyHotkey = GetComboText(ReplyHotkeyCombo);
         settings.ThemeMode = ThemeService.Normalize(GetComboText(ThemeModeCombo));
         settings.EnableDebugDiagnostics = DebugDiagnosticsCheck.IsChecked == true;
-        settings.SaveScreenshotsOnTranslation = SaveScreenshotsCheck.IsChecked == true;
         SaveOverlayBounds(settings);
         _config.Save();
         ApplyOverlaySettings();
         RefreshRuntimeMetrics();
     }
 
-    private void ApplyScreenshotSaveDirectory()
-    {
-        if (_coordinator is null)
-        {
-            return;
-        }
-
-        if (_config.Settings.SaveScreenshotsOnTranslation)
-        {
-            string repoRoot = AppContext.BaseDirectory;
-            while (repoRoot is not null && !File.Exists(Path.Combine(repoRoot, "OwTranslateLite.csproj")))
-            {
-                repoRoot = Path.GetDirectoryName(repoRoot)!;
-            }
-
-            _coordinator.ScreenshotSaveDirectory = repoRoot is not null
-                ? Path.Combine(repoRoot, "captured-screenshots")
-                : null;
-        }
-        else
-        {
-            _coordinator.ScreenshotSaveDirectory = null;
-        }
-    }
-
     private TranslationCoordinator CreateCoordinator() =>
-        new(_config.Settings, _glossary, AppendDedupeLog)
-        {
-            FrameSequenceRecorder = _frameSequenceRecorder
-        };
+        new(_config.Settings, _glossary, AppendDedupeLog);
 
     private void SelectCombo(WpfComboBox combo, string value)
     {
@@ -293,7 +261,7 @@ public partial class MainWindow : Window
         AutoSaveSettings();
     }
 
-    private void BetaDebugSettings_Changed(object sender, RoutedEventArgs e)
+    private void DiagnosticsSettings_Changed(object sender, RoutedEventArgs e)
     {
         AutoSaveSettings();
     }
@@ -396,7 +364,6 @@ public partial class MainWindow : Window
         }
 
         SaveSettingsFromUi();
-        ApplyScreenshotSaveDirectory();
     }
 
     private void FinishFirstRun_Click(object sender, RoutedEventArgs e)
@@ -542,7 +509,6 @@ public partial class MainWindow : Window
     {
         EndFrameAdjustment(log: true);
         SaveSettingsFromUi();
-        ApplyScreenshotSaveDirectory();
         if (_config.Settings.CaptureRegion is null)
         {
             AddLog("请先选择聊天区域。");
@@ -843,7 +809,6 @@ public partial class MainWindow : Window
         }
 
         StopLoop(hideOverlay: true, clearOverlay: true);
-        _frameSequenceRecorder.Stop();
         _overlayController.Hide();
         LogList.Items.Clear();
         _config.ResetUserData();
@@ -1743,7 +1708,7 @@ public partial class MainWindow : Window
                - 安装路径包含中文: {hasCjkPath}
 
                ## 诊断文件
-               如需排查，请在主窗口左侧 Beta Tools 中点击“导出反馈包”，并把生成的 zip 拖到这个 Issue 中。
+               如需排查，请在主窗口左侧诊断工具中点击“导出反馈包”，并把生成的 zip 拖到这个 Issue 中。
                """;
     }
 

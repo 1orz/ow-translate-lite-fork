@@ -81,11 +81,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "Updater build failed."
 }
 
-$readmeSource = Join-Path $repoRoot "Docs\BetaTest-v$version.md"
+$readmeSource = Join-Path $repoRoot "Docs\Release-v$version.md"
 if (-not (Test-Path -LiteralPath $readmeSource)) {
     $readmeSource = Join-Path $repoRoot "README.md"
 }
-Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $packageRoot "README-BETA.md") -Force
+Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $packageRoot "README.md") -Force
 
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
