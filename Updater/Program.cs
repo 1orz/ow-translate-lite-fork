@@ -16,6 +16,7 @@ namespace OWTranslatorLiteUpdater
         [STAThread]
         private static int Main(string[] args)
         {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
