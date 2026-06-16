@@ -286,3 +286,7 @@ Docs/                  architecture, test guides, refactor notes
 - [Timeline Refactor Update](Docs/TimelineRefactor-Update-20260613.md)
 - [Replay Case Recording Guide](Docs/ReplayCaseRecordingGuide-20260612.md)
 - [Publish Layout](Docs/PublishLayout.md)
+
+### License
+
+This project is released under the [MIT License](LICENSE).
