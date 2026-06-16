@@ -129,7 +129,7 @@ if (framePaths.Length == 0)
 List<string> dedupeLog = [];
 AppSettings settings = new()
 {
-    EnableDedupeDebugLog = true
+    EnableDebugDiagnostics = true
 };
 OwGlossaryService glossary = OwGlossaryService.LoadDefault();
 TranslationCoordinator coordinator = new(settings, glossary, message => dedupeLog.Add(message));
