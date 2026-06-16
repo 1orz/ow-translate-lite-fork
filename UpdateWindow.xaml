@@ -64,7 +64,7 @@
                         Margin="0,18,0,12"
                         Padding="12">
                     <TextBlock x:Name="AssetText"
-                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
                                TextWrapping="Wrap"/>
                 </Border>
 
@@ -84,7 +84,7 @@
                                       Padding="14,0,14,12">
                             <TextBlock x:Name="ReleaseNotesText"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </ScrollViewer>
                     </Grid>
                 </Border>

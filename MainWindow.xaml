@@ -30,8 +30,8 @@
         <Border x:Name="TitleBar"
                 Grid.Row="0"
                 Height="38"
-                Background="{StaticResource WindowBrush}"
-                BorderBrush="{StaticResource BorderSoftBrush}"
+                Background="{DynamicResource WindowBrush}"
+                BorderBrush="{DynamicResource BorderSoftBrush}"
                 BorderThickness="0,0,0,1"
                 MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid Margin="16,0,10,0">
@@ -40,7 +40,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="OW Translator Lite"
-                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
                            FontSize="13"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"/>
@@ -70,11 +70,11 @@
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Width="34" Height="34" CornerRadius="9" Background="#182534" BorderBrush="#335C9DFF" BorderThickness="1" Margin="0,0,12,0">
-                            <Path Data="{StaticResource IconMessage}" Style="{StaticResource IconPathStyle}" Stroke="{StaticResource PrimaryBrush}" Width="18" Height="18"/>
+                            <Path Data="{StaticResource IconMessage}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource PrimaryBrush}" Width="18" Height="18"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="OW Translator Lite" FontSize="22" FontWeight="SemiBold"/>
-                            <TextBlock Text="v0.2.0 beta" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="1,4,0,0"/>
+                            <TextBlock Text="v0.2.0 beta" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="1,4,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
@@ -102,7 +102,7 @@
                         <Border x:Name="FirstRunPanel" Style="{StaticResource CardBorderStyle}" BorderBrush="#660A84FF" Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="首次配置" Style="{StaticResource SectionHeaderTextStyle}"/>
-                                <TextBlock Text="选择 API、翻译区域和翻译框后即可开始。" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <TextBlock Text="选择 API、翻译区域和翻译框后即可开始。" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 <Button Content="完成首次配置" Style="{StaticResource PrimaryButtonStyle}" Margin="0,12,0,0" HorizontalAlignment="Left" Click="FinishFirstRun_Click"/>
                             </StackPanel>
                         </Border>
@@ -154,7 +154,7 @@
                                         <Slider x:Name="OpacitySlider" Minimum="0" Maximum="1" Value="0.86" ValueChanged="OverlaySettings_Changed"/>
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock x:Name="RegionText" Text="未选择区域" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="RegionText" Text="未选择区域" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                 <WrapPanel Margin="0,0,0,10">
                                     <Button Content="选择翻译区域" Click="SelectArea_Click"/>
                                     <Button x:Name="AdjustFrameButton" Content="调整翻译框" Click="AdjustFrame_Click"/>
@@ -199,7 +199,7 @@
                                 </StackPanel>
                                 <TextBlock x:Name="FrameAdjustHint"
                                            Text="正在调整翻译框：拖动顶部横条移动，拖动右下角缩放。完成后点击“完成调整”。"
-                                           Foreground="{StaticResource WarningBrush}"
+                                           Foreground="{DynamicResource WarningBrush}"
                                            TextWrapping="Wrap"
                                            Visibility="Collapsed"
                                            Margin="0,6,0,0"/>
@@ -241,7 +241,7 @@
                                 <StackPanel>
                                     <TextBlock Text="使用说明" Style="{StaticResource SectionHeaderTextStyle}"/>
                                     <TextBlock Text="查看 API 配置、翻译框设置和中文回话输入的图文指南。"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                TextWrapping="Wrap"
                                                Margin="0,8,14,0"/>
                                 </StackPanel>
@@ -264,7 +264,7 @@
                                 <StackPanel>
                                     <TextBlock Text="外观" Style="{StaticResource SectionHeaderTextStyle}"/>
                                     <TextBlock Text="主窗口和快速上手主题。"
-                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
                                                TextWrapping="Wrap"
                                                Margin="0,8,14,0"/>
                                 </StackPanel>
@@ -282,7 +282,7 @@
                             <StackPanel>
                                 <TextBlock Text="联系与反馈" Style="{StaticResource SectionHeaderTextStyle}"/>
                                 <TextBlock Text="遇到无法启动、OCR 不识别、重复翻译或翻译框异常时，可以提交反馈。"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
                                            TextWrapping="Wrap"
                                            Margin="0,8,0,12"/>
                                 <WrapPanel>
@@ -297,10 +297,10 @@
                             </StackPanel>
                         </Border>
 
-                        <Expander Margin="0,0,0,12" Foreground="{StaticResource TextBrush}">
+                        <Expander Margin="0,0,0,12" Foreground="{DynamicResource TextBrush}">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource IconBug}" Style="{StaticResource IconPathStyle}" Stroke="{StaticResource WarningBrush}" Margin="0,0,8,0"/>
+                                    <Path Data="{StaticResource IconBug}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource WarningBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="Beta Tools" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Expander.Header>
@@ -363,19 +363,19 @@
                         <Border Style="{StaticResource CardBorderStyle}">
                             <StackPanel>
                                 <TextBlock Text="延迟" Style="{StaticResource CaptionTextStyle}"/>
-                                <TextBlock x:Name="LatencyText" Text="0 ms" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource CyanBrush}" Margin="0,6,0,0"/>
+                                <TextBlock x:Name="LatencyText" Text="0 ms" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource CyanBrush}" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
                             <StackPanel>
                                 <TextBlock Text="运行状态" Style="{StaticResource CaptionTextStyle}"/>
-                                <TextBlock x:Name="StatusText" Text="待机" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}" Margin="0,6,0,0"/>
+                                <TextBlock x:Name="StatusText" Text="待机" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="4" Style="{StaticResource CardBorderStyle}">
                             <StackPanel>
                                 <TextBlock Text="翻译队列" Style="{StaticResource CaptionTextStyle}"/>
-                                <TextBlock x:Name="QueueMetricText" Text="0" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Margin="0,6,0,0"/>
+                                <TextBlock x:Name="QueueMetricText" Text="0" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -388,22 +388,22 @@
                             </Grid.RowDefinitions>
                             <Grid Margin="16,14">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Path Data="{StaticResource IconMessage}" Style="{StaticResource IconPathStyle}" Stroke="{StaticResource PrimaryBrush}" Margin="0,0,8,0"/>
+                                    <Path Data="{StaticResource IconMessage}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource PrimaryBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="最近翻译" Style="{StaticResource SectionHeaderTextStyle}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                             <ListBox x:Name="RecentRecordList" Grid.Row="1" Padding="12,0,12,12" Background="Transparent">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="{StaticResource BorderSoftBrush}" BorderThickness="0,0,0,1" Padding="4,8">
+                                        <Border BorderBrush="{DynamicResource BorderSoftBrush}" BorderThickness="0,0,0,1" Padding="4,8">
                                             <StackPanel>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Speaker}" Foreground="{StaticResource CyanBrush}" FontWeight="SemiBold"/>
-                                                    <TextBlock Text="  #" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="6,1,0,0"/>
-                                                    <TextBlock Text="{Binding Seq}" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,1,0,0"/>
+                                                    <TextBlock Text="{Binding Speaker}" Foreground="{DynamicResource CyanBrush}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="  #" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" Margin="6,1,0,0"/>
+                                                    <TextBlock Text="{Binding Seq}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" Margin="0,1,0,0"/>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding TranslatedText}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,3,0,0"/>
-                                                <TextBlock Text="{Binding SourceText}" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="0,2,0,0"/>
+                                                <TextBlock Text="{Binding SourceText}" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" Margin="0,2,0,0"/>
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
@@ -424,7 +424,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Path Data="{StaticResource IconActivity}" Style="{StaticResource IconPathStyle}" Stroke="{StaticResource SuccessBrush}" Margin="0,0,8,0"/>
+                                    <Path Data="{StaticResource IconActivity}" Style="{StaticResource IconPathStyle}" Stroke="{DynamicResource SuccessBrush}" Margin="0,0,8,0"/>
                                     <TextBlock Text="事件流" Style="{StaticResource SectionHeaderTextStyle}" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <Button Grid.Column="1" Content="清空" Width="68" Height="30" Margin="0" Click="ClearLog_Click"/>
