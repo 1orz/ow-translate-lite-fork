@@ -314,8 +314,11 @@ public partial class OverlayWindow : Window
         FloatingPanel.Background = CreateBackgroundBrush(opacity);
         FloatingPanel.BorderBrush = CreateBorderBrush(opacity);
         ReplyInputPanel.Background = System.Windows.Media.Brushes.Transparent;
-        ReplyInputBox.Background = CreateInputBoxBrush(opacity);
-        ReplyTargetCombo.Background = CreateReplyComboBrush(opacity);
+        SolidColorBrush inputBrush = CreateInputBoxBrush(opacity);
+        ReplyInputBox.Background = inputBrush;
+        ManualOcrButton.Background = inputBrush;
+        CopyReplyButton.Background = inputBrush;
+        ReplyTargetCombo.Background = inputBrush;
     }
 
     private void ApplyReplyInputVisibility()
@@ -343,12 +346,6 @@ public partial class OverlayWindow : Window
     {
         byte alpha = (byte)(Math.Clamp(opacity + 0.08, 0.16, 0.72) * 255);
         return new SolidColorBrush(MediaColor.FromArgb(alpha, 22, 24, 32));
-    }
-
-    private static SolidColorBrush CreateReplyComboBrush(double opacity)
-    {
-        byte alpha = (byte)(Math.Clamp(opacity + 0.36, 0.78, 0.94) * 255);
-        return new SolidColorBrush(MediaColor.FromArgb(alpha, 236, 244, 255));
     }
 
     private void ApplyClickThrough(bool enabled)

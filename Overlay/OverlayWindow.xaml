@@ -63,13 +63,16 @@
                         <Grid>
                             <ToggleButton x:Name="ToggleButton"
                                           Focusable="False"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                           ClickMode="Press">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="{x:Type ToggleButton}">
                                         <Border x:Name="Chrome"
                                                 CornerRadius="12"
-                                                Background="{StaticResource ReplyComboButtonBrush}"
+                                                Background="{TemplateBinding Background}"
                                                 BorderBrush="#5264D2FF"
                                                 BorderThickness="{TemplateBinding BorderThickness}">
                                             <Grid>
@@ -243,7 +246,6 @@
                               Grid.Column="0"
                               Style="{StaticResource ReplyComboBoxStyle}"
                               BorderThickness="1"
-                              Background="{StaticResource ReplyComboButtonBrush}"
                               VerticalContentAlignment="Center">
                         <ComboBoxItem Content="自动" Tag="auto" Style="{StaticResource ReplyComboBoxItemStyle}"/>
                         <ComboBoxItem Content="英语" Tag="en" Style="{StaticResource ReplyComboBoxItemStyle}"/>
@@ -253,7 +255,6 @@
                     <TextBox x:Name="ReplyInputBox"
                              Grid.Column="2"
                              BorderThickness="0"
-                             Background="{StaticResource OverlayInputBrush}"
                              Foreground="#F5F7FA"
                              CaretBrush="#64D2FF"
                              Padding="10,5"
@@ -263,7 +264,6 @@
                              Width="32"
                              Height="32"
                              Padding="0"
-                             Background="{StaticResource OverlayInputBrush}"
                              BorderBrush="#44FFFFFF"
                              BorderThickness="1"
                              ToolTip="识别一次当前区域">
@@ -279,7 +279,6 @@
                             Width="32"
                             Height="32"
                             Padding="0"
-                            Background="{StaticResource OverlayInputBrush}"
                             BorderBrush="#44FFFFFF"
                             BorderThickness="1"
                              ToolTip="复制译文">
