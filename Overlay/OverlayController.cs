@@ -14,6 +14,7 @@ public sealed class OverlayController
     public event EventHandler<string>? ReplyTargetLanguageChanged;
     public event EventHandler? ReplyEditingStarted;
     public event EventHandler? ReplyModeExited;
+    public event EventHandler? ManualOcrRequested;
 
     public bool IsCreated => _window is not null;
     public bool IsVisible => _window?.IsVisible == true;
@@ -30,6 +31,7 @@ public sealed class OverlayController
             _window.ReplyEditingStarted += (_, args) => ReplyEditingStarted?.Invoke(this, args);
             _window.ReplyTargetLanguageChanged += (_, language) => ReplyTargetLanguageChanged?.Invoke(this, language);
             _window.ReplyModeExited += (_, args) => ReplyModeExited?.Invoke(this, args);
+            _window.ManualOcrRequested += (_, args) => ManualOcrRequested?.Invoke(this, args);
         }
 
         ApplySettings(settings);
@@ -131,6 +133,11 @@ public sealed class OverlayController
     public void SetReplyTranslation(string translated)
     {
         _window?.SetReplyTranslation(translated);
+    }
+
+    public void SetManualOcrButtonState(bool enabled, bool busy, string tooltip)
+    {
+        _window?.SetManualOcrButtonState(enabled, busy, tooltip);
     }
 
     private void OverlayWindow_BoundsChanged(object? sender, EventArgs e)

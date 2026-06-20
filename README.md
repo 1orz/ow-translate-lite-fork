@@ -13,7 +13,7 @@
   <img alt=".NET" src="https://img.shields.io/badge/.NET-9.0-512BD4?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/Windows-x64-0078D4?style=flat-square">
   <img alt="OCR" src="https://img.shields.io/badge/OCR-OneOCR-00A8E8?style=flat-square">
-  <img alt="Status" src="https://img.shields.io/badge/status-v1.0.0-34C759?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/status-v1.1.0-34C759?style=flat-square">
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
 
 OW Translator Lite 是一个 Windows 桌面工具，用于在《守望先锋 2》外服对局中实时翻译聊天内容。它通过本地 OneOCR 识别你框选的聊天区域，把英语、日语、韩语玩家消息发送到 DeepSeek 或 OpenAI-compatible API 翻译为简体中文，并按原聊天顺序显示在置顶翻译框中。
 
-项目目标很明确：在不打断游戏视野和操作节奏的前提下，让中文玩家能快速理解队友和对手的文字沟通。当前版本为 `v1.0.0`，已经完成 Timeline 顺序对齐、多帧 OCR 共识、韩语 jamo 容错和 Apple Dark Console UI 改造。
+项目目标很明确：在不打断游戏视野和操作节奏的前提下，让中文玩家能快速理解队友和对手的文字沟通。当前版本为 `v1.1.0`，新增手动/即时 OCR 触发、低频自动识别、回话复制兜底、更新后说明弹窗和选区稳定性改进。
 
 ### 演示
 
@@ -163,7 +163,7 @@ Docs/                  架构、测试指南、重构记录
 
 OW Translator Lite is a Windows desktop app for real-time Overwatch 2 chat translation. It captures a user-selected chat region, recognizes text locally with OneOCR, sends English/Japanese/Korean player messages to DeepSeek or any OpenAI-compatible chat completions API, and renders Simplified Chinese translations in a topmost overlay.
 
-The goal is practical and narrow: help Chinese players understand match chat without interrupting visibility or input flow. The current version is `v1.0.0`, with Timeline-based ordering, multi-frame OCR consensus, Korean jamo tolerance, and an Apple Dark Console UI.
+The goal is practical and narrow: help Chinese players understand match chat without interrupting visibility or input flow. The current version is `v1.1.0`, with manual/instant OCR triggering, lower-frequency automatic recognition, reply-copy fallbacks, post-update highlights, and more stable capture-region handling.
 
 ### Demo
 
@@ -241,7 +241,7 @@ The central idea is that message identity comes from an ordered Timeline, not fr
 
 New candidates are not translated immediately. They wait for multi-frame consensus: two consistent observations, or near-equivalent Korean jamo observations, are enough to queue translation. This absorbs light OneOCR jitter around short Korean text, spacing, and visually similar characters.
 
-The capture loop uses pixel-diff patrol plus a lightweight text-presence gate: stable frames only compute a cheap screenshot signature and do not run OCR. When the chat region changes, the app first checks for likely chat text, then runs a short OCR burst. Completed translations are rendered by Timeline `Seq`, so retries and network latency do not reorder the overlay.
+The capture loop uses pixel-diff patrol plus an idle OCR probe: stable frames only compute a cheap screenshot signature and do not run OCR. When the OW background keeps changing, the app probes OCR at a lower idle cadence; once visible chat is detected, it enters a short burst and active window for faster follow-up recognition. Completed translations are rendered by Timeline `Seq`, so retries and network latency do not reorder the overlay.
 
 ### Developer Commands
 

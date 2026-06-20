@@ -104,6 +104,10 @@ if (-not (Test-Path -LiteralPath $readmeSource)) {
 }
 Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $packageRoot "README.md") -Force
 
+$releaseNotesDirectory = Join-Path $packageRoot "app\Resources\ReleaseNotes"
+New-Item -ItemType Directory -Force -Path $releaseNotesDirectory | Out-Null
+Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $releaseNotesDirectory "current.md") -Force
+
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
 }

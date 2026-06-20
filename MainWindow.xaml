@@ -163,6 +163,44 @@
                                     <Button Content="选择翻译区域" Margin="0,0,8,0" Click="SelectArea_Click"/>
                                     <Button x:Name="AdjustFrameButton" Content="调整翻译框" Margin="0" Style="{StaticResource GhostButtonStyle}" Click="AdjustFrame_Click"/>
                                 </UniformGrid>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="128"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="识别模式" VerticalAlignment="Center"/>
+                                        <TextBlock Text="?"
+                                                   Width="18"
+                                                   Height="18"
+                                                   Margin="6,0,0,0"
+                                                   TextAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontWeight="SemiBold"
+                                                   ToolTipService.InitialShowDelay="0"
+                                                   ToolTipService.ShowDuration="60000"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip Background="#F7F8FA"
+                                                         BorderBrush="#D7DCE3"
+                                                         Foreground="Black"
+                                                         Padding="10,7"
+                                                         MaxWidth="260">
+                                                    <TextBlock Text="手动模式只在按 Ctrl+Shift+T 或点相机时识别一次；自动模式也可点相机立即识别。"
+                                                               Foreground="Black"
+                                                               TextWrapping="Wrap"/>
+                                                </ToolTip>
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <ComboBox x:Name="OcrModeCombo"
+                                              Grid.Column="1"
+                                              VerticalAlignment="Center"
+                                              SelectionChanged="OcrMode_SelectionChanged">
+                                        <ComboBoxItem Content="自动模式" Tag="auto"/>
+                                        <ComboBoxItem Content="手动模式" Tag="manual"/>
+                                    </ComboBox>
+                                </Grid>
                                 <StackPanel>
                                     <Grid Margin="0,0,0,8" MinHeight="30">
                                         <Grid.ColumnDefinitions>
@@ -218,24 +256,24 @@
                                         <ColumnDefinition/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="启用回话热键" VerticalAlignment="Center"/>
-                                    <CheckBox x:Name="ReplyHotkeyCheck"
-                                              Grid.Column="1"
-                                              Style="{StaticResource SwitchCheckBoxStyle}"
-                                              Checked="ReplyHotkeySettings_Changed"
-                                              Unchecked="ReplyHotkeySettings_Changed"/>
-                                </Grid>
-                                <Grid Margin="0,8,0,0" MinHeight="30">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
                                     <TextBlock Text="自动复制回话译文" VerticalAlignment="Center"/>
                                     <CheckBox x:Name="AutoCopyReplyCheck"
                                               Grid.Column="1"
                                               Style="{StaticResource SwitchCheckBoxStyle}"
                                               Checked="OverlaySettings_Changed"
                                               Unchecked="OverlaySettings_Changed"/>
+                                </Grid>
+                                <Grid Margin="0,8,0,0" MinHeight="30">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="启用回话热键" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="ReplyHotkeyCheck"
+                                              Grid.Column="1"
+                                              Style="{StaticResource SwitchCheckBoxStyle}"
+                                              Checked="ReplyHotkeySettings_Changed"
+                                              Unchecked="ReplyHotkeySettings_Changed"/>
                                 </Grid>
                                 <ComboBox x:Name="ReplyHotkeyCombo"
                                           Margin="0,6,0,0"
@@ -245,23 +283,6 @@
                                     <ComboBoxItem Content="Ctrl+Alt+Enter"/>
                                     <ComboBoxItem Content="Alt+Shift+Enter"/>
                                 </ComboBox>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="使用说明" Style="{StaticResource SectionHeaderTextStyle}"/>
-                                <StackPanel>
-                                    <TextBlock Text="查看 API 配置、翻译框设置和中文回话输入的图文指南。"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                           TextWrapping="Wrap"
-                                           Margin="0,8,0,12"/>
-                                </StackPanel>
-                                <Button Content="打开使用说明"
-                                        Width="118"
-                                        HorizontalAlignment="Left"
-                                        Style="{StaticResource GhostButtonStyle}"
-                                        Click="OpenQuickStart_Click"/>
                             </StackPanel>
                         </Border>
 
@@ -286,6 +307,23 @@
                                     <ComboBoxItem Content="浅色" Tag="Light"/>
                                 </ComboBox>
                             </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="使用说明" Style="{StaticResource SectionHeaderTextStyle}"/>
+                                <StackPanel>
+                                    <TextBlock Text="查看 API 配置、翻译框设置和中文回话输入的图文指南。"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,8,0,12"/>
+                                </StackPanel>
+                                <Button Content="打开使用说明"
+                                        Width="118"
+                                        HorizontalAlignment="Left"
+                                        Style="{StaticResource GhostButtonStyle}"
+                                        Click="OpenQuickStart_Click"/>
+                            </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">

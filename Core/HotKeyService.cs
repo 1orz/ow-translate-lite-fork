@@ -11,6 +11,7 @@ public sealed class HotKeyService : IDisposable
     private const uint ModShift = 0x0004;
     private const uint VkReturn = 0x0D;
     private const uint VkSpace = 0x20;
+    private const uint VkT = 0x54;
 
     private readonly int _id;
     private HwndSource? _source;
@@ -107,6 +108,9 @@ public sealed class HotKeyService : IDisposable
                     break;
                 case "space":
                     key = VkSpace;
+                    break;
+                case "t":
+                    key = VkT;
                     break;
             }
         }

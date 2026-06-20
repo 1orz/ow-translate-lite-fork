@@ -216,6 +216,7 @@ static void RunGateLab(string inputDir, string outputDir, IReadOnlyList<string> 
     Dictionary<string, string> labels = LoadGateLabels(inputDir);
     TextPresenceGate baselineGate = new();
     StableTextLineGate stableGate = new();
+    EdgeProjectionGate edgeGate = new();
     FrameDiffGate diffGate = new();
     List<GateLabResult> results = [];
     foreach (string imagePath in imagePaths)
@@ -226,11 +227,13 @@ static void RunGateLab(string inputDir, string outputDir, IReadOnlyList<string> 
         TextPresenceResult baseline = baselineGate.Observe(source);
         baselineStopwatch.Stop();
         StableTextLineGateResult stable = stableGate.Observe(source);
+        EdgeProjectionGateResult edge = edgeGate.Observe(source);
         string label = labels.TryGetValue(Path.GetFullPath(imagePath), out string? knownLabel) && !string.IsNullOrWhiteSpace(knownLabel)
             ? knownLabel
             : InferGateLabel(imagePath);
         bool baselineTriggered = diff.HasChanged && baseline.HasLikelyText;
         bool stableTriggered = diff.HasChanged && stable.HasLikelyStableText;
+        bool edgeTriggered = diff.HasChanged && edge.HasLikelyText;
         results.Add(new GateLabResult(
             imagePath,
             label,
@@ -239,9 +242,11 @@ static void RunGateLab(string inputDir, string outputDir, IReadOnlyList<string> 
             baselineStopwatch.Elapsed,
             baselineTriggered,
             stable,
-            stableTriggered));
+            stableTriggered,
+            edge,
+            edgeTriggered));
         Console.WriteLine(
-            $"{Path.GetFileName(imagePath)} | label={label} | diff={diff.HasChanged} | baseline={baselineTriggered} score={baseline.Score:0.##} | stable={stableTriggered} score={stable.Score:0.##} lines={stable.CandidateLineCount} reason={stable.Reason}");
+            $"{Path.GetFileName(imagePath)} | label={label} | diff={diff.HasChanged} | baseline={baselineTriggered} score={baseline.Score:0.##} | stable={stableTriggered} score={stable.Score:0.##} lines={stable.CandidateLineCount} | edge={edgeTriggered} score={edge.Score:0.##} strong={edge.StrongLineCount} weak={edge.WeakLineCount} reason={edge.Reason}");
     }
 
     string reportPath = Path.Combine(outputDir, "gate-report.md");
@@ -262,13 +267,15 @@ static string BuildGateReport(string inputDir, string outputDir, IReadOnlyList<G
     builder.AppendLine($"- Diff changed: {changed}");
     AppendGateSummary(builder, "Baseline single-frame gate", results, static result => result.BaselineTriggered);
     AppendGateSummary(builder, "Stable multi-frame gate", results, static result => result.StableTriggered);
+    AppendGateSummary(builder, "Edge projection gate", results, static result => result.EdgeTriggered);
+    AppendGateSummary(builder, "Hybrid conservative gate (baseline OR stable)", results, static result => result.HybridConservativeTriggered);
     builder.AppendLine();
-    builder.AppendLine("| Image | Label | Diff | Baseline | Baseline Score | Baseline ms | Stable | Stable Score | Stable Lines | Stable ms | Reason |");
-    builder.AppendLine("| --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- |");
+    builder.AppendLine("| Image | Label | Diff | Baseline | Baseline Score | Baseline ms | Stable | Stable Score | Stable Lines | Stable ms | Stable Reason | Edge | Edge Score | Edge Strong | Edge Weak | Edge ms | Edge Reason |");
+    builder.AppendLine("| --- | --- | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | ---: | ---: | --- |");
     foreach (GateLabResult result in results)
     {
         builder.AppendLine(
-            $"| {Path.GetFileName(result.ImagePath)} | {result.Label} | {result.DiffChanged} | {result.BaselineTriggered} | {result.Baseline.Score:0.##} | {result.BaselineElapsed.TotalMilliseconds:0.###} | {result.StableTriggered} | {result.Stable.Score:0.##} | {result.Stable.CandidateLineCount} | {result.Stable.Elapsed.TotalMilliseconds:0.###} | {result.Stable.Reason} |");
+            $"| {Path.GetFileName(result.ImagePath)} | {result.Label} | {result.DiffChanged} | {result.BaselineTriggered} | {result.Baseline.Score:0.##} | {result.BaselineElapsed.TotalMilliseconds:0.###} | {result.StableTriggered} | {result.Stable.Score:0.##} | {result.Stable.CandidateLineCount} | {result.Stable.Elapsed.TotalMilliseconds:0.###} | {result.Stable.Reason} | {result.EdgeTriggered} | {result.Edge.Score:0.##} | {result.Edge.StrongLineCount} | {result.Edge.WeakLineCount} | {result.Edge.Elapsed.TotalMilliseconds:0.###} | {result.Edge.Reason} |");
     }
 
     builder.AppendLine();
@@ -276,6 +283,20 @@ static string BuildGateReport(string inputDir, string outputDir, IReadOnlyList<G
     foreach (GateLabResult result in results.Where(static result => IsTextLabel(result.Label) && result.DiffChanged && !result.StableTriggered))
     {
         builder.AppendLine($"- `{result.ImagePath}` score={result.Stable.Score:0.##} reason={result.Stable.Reason}");
+    }
+
+    builder.AppendLine();
+    builder.AppendLine("## Possible Edge-Gate False Negatives");
+    foreach (GateLabResult result in results.Where(static result => IsTextLabel(result.Label) && result.DiffChanged && !result.EdgeTriggered))
+    {
+        builder.AppendLine($"- `{result.ImagePath}` score={result.Edge.Score:0.##} reason={result.Edge.Reason}");
+    }
+
+    builder.AppendLine();
+    builder.AppendLine("## Possible Hybrid-Gate False Negatives");
+    foreach (GateLabResult result in results.Where(static result => IsTextLabel(result.Label) && result.DiffChanged && !result.HybridConservativeTriggered))
+    {
+        builder.AppendLine($"- `{result.ImagePath}` baseline={result.Baseline.Score:0.##}/{result.Baseline.Reason} stable={result.Stable.Score:0.##}/{result.Stable.Reason}");
     }
 
     return builder.ToString();
@@ -819,7 +840,12 @@ internal sealed record GateLabResult(
     TimeSpan BaselineElapsed,
     bool BaselineTriggered,
     StableTextLineGateResult Stable,
-    bool StableTriggered);
+    bool StableTriggered,
+    EdgeProjectionGateResult Edge,
+    bool EdgeTriggered)
+{
+    public bool HybridConservativeTriggered => BaselineTriggered || StableTriggered;
+}
 
 internal sealed record GateRecordingManifest(
     int Version,

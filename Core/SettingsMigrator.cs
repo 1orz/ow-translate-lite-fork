@@ -57,6 +57,12 @@ public static class SettingsMigrator
             changed = true;
         }
 
+        if (settings.LastSeenVersion is null)
+        {
+            settings.LastSeenVersion = "";
+            changed = true;
+        }
+
         if (settings.IgnoredUpdateVersion is null)
         {
             settings.IgnoredUpdateVersion = "";
@@ -72,6 +78,13 @@ public static class SettingsMigrator
         if (!string.Equals(settings.OcrLanguage, "auto", StringComparison.Ordinal))
         {
             settings.OcrLanguage = "auto";
+            changed = true;
+        }
+
+        string ocrMode = settings.OcrMode is "manual" ? "manual" : "auto";
+        if (!string.Equals(settings.OcrMode, ocrMode, StringComparison.Ordinal))
+        {
+            settings.OcrMode = ocrMode;
             changed = true;
         }
 
@@ -112,7 +125,7 @@ public static class SettingsMigrator
         settings.OverlayFontSize = Clamp(settings.OverlayFontSize, 12, 36, ref changed);
         settings.OverlayLeft = NormalizeNullableFinite(settings.OverlayLeft, ref changed);
         settings.OverlayTop = NormalizeNullableFinite(settings.OverlayTop, ref changed);
-        settings.OverlayWidth = NormalizeNullableFinite(settings.OverlayWidth, ref changed, minimum: 260);
+        settings.OverlayWidth = NormalizeNullableFinite(settings.OverlayWidth, ref changed, minimum: 420);
         settings.OverlayHeight = NormalizeNullableFinite(settings.OverlayHeight, ref changed, minimum: 100);
 
         if (settings.CaptureRegion is not null)

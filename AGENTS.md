@@ -142,6 +142,7 @@ powershell -ExecutionPolicy Bypass -File Tools\PackageRelease.ps1
 
 - 不要每次小修都打包，用户要求确认测试完成后再最终打包时再做。
 - 自包含发布会带很多 .NET runtime DLL，这是正常的；不要手删不认识的 DLL，也不要随意移动 .NET host 依赖。OneOCR、Resources、UI 候选资源保持分目录。
+- 自动更新弹窗会展示 GitHub Release 的 `body` 作为“更新内容”，最多显示前约 1400 字。发布正式版本时必须在 Release notes 中写清楚用户可读的更新概略、重要修复和注意事项，不要只写版本号或空白说明。
 - 词库、文档、日志类小改默认只 build 验证，不自动 publish/zip，除非用户明确要求发布包。
 
 ## Git 维护约定

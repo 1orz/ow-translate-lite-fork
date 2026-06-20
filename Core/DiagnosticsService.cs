@@ -103,10 +103,12 @@ public sealed class DiagnosticsService
         builder.AppendLine();
         builder.AppendLine("== Settings ==");
         builder.AppendLine($"DataSchemaVersion: {settings.DataSchemaVersion}");
+        builder.AppendLine($"LastSeenVersion: {settings.LastSeenVersion}");
         builder.AppendLine($"ThemeMode: {settings.ThemeMode}");
         builder.AppendLine($"IgnoredUpdateVersion: {settings.IgnoredUpdateVersion}");
         builder.AppendLine($"OcrEngine: {settings.OcrEngine}");
         builder.AppendLine($"OcrLanguage: {settings.OcrLanguage}");
+        builder.AppendLine($"OcrMode: {settings.OcrMode}");
         builder.AppendLine($"TranslationProvider: {settings.TranslationProvider}");
         builder.AppendLine($"ApiUrl: {settings.ApiUrl}");
         builder.AppendLine($"ApiKeyConfigured: {!string.IsNullOrWhiteSpace(settings.ApiKey)}");

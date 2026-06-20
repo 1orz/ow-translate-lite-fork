@@ -40,6 +40,17 @@ public static class ScreenBoundsService
         return true;
     }
 
+    public static Rect ClipToVirtualScreenOrThrow(Rect requested)
+    {
+        if (TryClipToVirtualScreen(requested, out Rect clipped))
+        {
+            return clipped;
+        }
+
+        throw new InvalidCaptureRegionException(
+            $"聊天区域不在当前屏幕范围内，请重新选择聊天区域。屏幕范围：{Format(GetVirtualScreenRect())}，当前区域：{Format(requested)}。");
+    }
+
     public static void ValidateCaptureRegion(Rect region)
     {
         if (!IsFinite(region.Left) ||

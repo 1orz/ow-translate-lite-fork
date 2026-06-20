@@ -14,7 +14,7 @@ namespace OwTranslateLite.Overlay;
 
 public partial class OverlayWindow : Window
 {
-    private const double MinOverlayWidth = 260;
+    private const double MinOverlayWidth = 420;
     private const double MinOverlayHeight = 100;
     private const double MinVisiblePixels = 80;
     private const double AutoScrollBottomTolerance = 24;
@@ -34,6 +34,7 @@ public partial class OverlayWindow : Window
     private string _effectiveReplyLanguage = "en";
     private bool _isDragging;
     private bool _hasReplyTranslation;
+    private bool _forceReplyInputVisibleForManualOcr;
     private WpfPoint _dragStartMouse;
     private double _dragStartLeft;
     private double _dragStartTop;
@@ -50,6 +51,8 @@ public partial class OverlayWindow : Window
         ReplyInputBox.PreviewKeyDown += ReplyInputBox_PreviewKeyDown;
         ReplyInputBox.GotKeyboardFocus += (_, _) => BeginReplyEditing();
         ReplyTargetCombo.SelectionChanged += ReplyTargetCombo_SelectionChanged;
+        ManualOcrButton.Click += ManualOcrButton_Click;
+        ManualOcrButton.IsEnabled = false;
         CopyReplyButton.Click += CopyReplyButton_Click;
         CopyReplyButton.IsEnabled = false;
     }
@@ -59,6 +62,7 @@ public partial class OverlayWindow : Window
     public event EventHandler<string>? ReplyTargetLanguageChanged;
     public event EventHandler? ReplyEditingStarted;
     public event EventHandler? ReplyModeExited;
+    public event EventHandler? ManualOcrRequested;
 
     public void ApplySettings(AppSettings settings)
     {
@@ -120,6 +124,15 @@ public partial class OverlayWindow : Window
     public void SetReplyStatus(string status)
     {
         ToolTip = status;
+    }
+
+    public void SetManualOcrButtonState(bool enabled, bool busy, string tooltip)
+    {
+        _forceReplyInputVisibleForManualOcr = enabled || busy;
+        ManualOcrButton.IsEnabled = enabled && !busy;
+        ManualOcrButton.Opacity = enabled && !busy ? 1.0 : 0.42;
+        ManualOcrButton.ToolTip = tooltip;
+        ApplyReplyInputVisibility();
     }
 
     public void ClearReplyInput()
@@ -307,7 +320,9 @@ public partial class OverlayWindow : Window
 
     private void ApplyReplyInputVisibility()
     {
-        ReplyInputPanel.Visibility = _isReplyMode || _settings?.ShowReplyInputBar == true
+        ReplyInputPanel.Visibility = _isReplyMode ||
+                                     _forceReplyInputVisibleForManualOcr ||
+                                     _settings?.ShowReplyInputBar == true
             ? Visibility.Visible
             : Visibility.Collapsed;
     }
@@ -432,6 +447,11 @@ public partial class OverlayWindow : Window
         }
 
         CopyReplyRequested?.Invoke(this, text);
+    }
+
+    private void ManualOcrButton_Click(object sender, RoutedEventArgs e)
+    {
+        ManualOcrRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void ReplyTargetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

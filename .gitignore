@@ -12,4 +12,5 @@ dist/
 Docs/ocr-lab-output/
 ow-screenshot/
 captured-screenshots/
+quickstart-screenshot/
 Tools/ReplayLab/**/replay-output/

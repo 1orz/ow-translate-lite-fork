@@ -118,7 +118,8 @@ public sealed class TranslationCoordinator
             return Array.Empty<ParsedChatLine>();
         }
 
-        System.Windows.Rect captureRegion = _settings.CaptureRegion.ToRect();
+        System.Windows.Rect captureRegion =
+            ScreenBoundsService.ClipToVirtualScreenOrThrow(_settings.CaptureRegion.ToRect());
         using Bitmap bitmap = ScreenCaptureService.Capture(captureRegion);
         return await DetectNewLinesFromBitmapAsync(ocrEngine, bitmap, captureRegion, cancellationToken);
     }

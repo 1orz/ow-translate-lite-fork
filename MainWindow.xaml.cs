@@ -16,10 +16,13 @@ namespace OwTranslateLite;
 public partial class MainWindow : Window
 {
     private static readonly TimeSpan OverlayIdleHideDelay = TimeSpan.FromSeconds(6);
-    private static readonly TimeSpan TextGateHeartbeatInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan IdleOcrProbeInterval = TimeSpan.FromMilliseconds(700);
+    private static readonly TimeSpan ActiveOcrProbeInterval = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan ActiveOcrWindowDuration = TimeSpan.FromSeconds(5);
     private const int MinSamplingIntervalMs = 250;
     private const int MaxSamplingIntervalMs = 300;
     private const int BurstOcrFrameCount = 3;
+    private const int NoChatOcrExitCount = 2;
     private const int MaxOverlayRecords = 50;
     private const int MaxLogRecords = 200;
     private const int TranslationQueueSoftBatchThreshold = 30;
@@ -28,6 +31,10 @@ public partial class MainWindow : Window
     private const int MaxOverflowTranslationBatchSize = 30;
     private const int MaxTranslationRetries = 2;
     private const int ReplyHotkeyId = 0x4F57;
+    private const int ManualOcrHotkeyId = 0x4F58;
+    private const string ManualOcrHotkeyGesture = "Ctrl+Shift+T";
+    private const int ManualOcrBurstFrameCount = 3;
+    private static readonly TimeSpan ManualOcrBurstFrameDelay = TimeSpan.FromMilliseconds(120);
     private const string ProjectHomeUrl = "https://github.com/reverieach/ow-translate-lite";
     private const string ProjectIssuesUrl = "https://github.com/reverieach/ow-translate-lite/issues/new";
     private const string ContactEmail = "reverie-ach@outlook.com";
@@ -35,6 +42,7 @@ public partial class MainWindow : Window
     private readonly ConfigStore _config = new();
     private readonly RecentChatLanguageTracker _recentChatLanguages = new();
     private readonly HotKeyService _replyHotKey = new(ReplyHotkeyId);
+    private readonly HotKeyService _manualOcrHotKey = new(ManualOcrHotkeyId);
     private readonly DiagnosticsService _diagnostics = new();
     private readonly UpdateService _updateService = new();
     private readonly OverlayController _overlayController = new();
@@ -46,10 +54,10 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _updateCheckCts;
     private readonly OcrEngineManager _ocrEngineManager = new();
     private readonly FrameDiffGate _frameDiffGate = new();
-    private readonly TextPresenceGate _textPresenceGate = new();
     private readonly ClipboardService _clipboardService = new();
     private readonly Queue<ParsedChatLine> _translationQueue = [];
     private readonly object _translationQueueLock = new();
+    private readonly SemaphoreSlim _ocrSemaphore = new(1, 1);
     private readonly TranslationQueueStatusTracker _translationQueueStatus = new();
     private Task? _translationWorkerTask;
     private string? _activeRunSettingsKey;
@@ -61,10 +69,13 @@ public partial class MainWindow : Window
     private bool _isLoadingSettings;
     private bool _settingsLoaded;
     private bool _isAdjustingTranslationFrame;
-    private DateTime _lastTextGateOcrAt = DateTime.Now;
-    private int _consecutiveTextGateRejects;
+    private int _ocrBurstOnceRunning;
+    private DateTime _lastIdleOcrProbeAt = DateTime.MinValue;
+    private DateTime _lastActiveOcrProbeAt = DateTime.MinValue;
+    private DateTime? _activeOcrUntil;
     private int _burstOcrFramesRemaining;
     private int _consecutiveNoChatFrames;
+    private int _consecutiveNoChatOcrFrames;
     private int _runGeneration;
     private QuickStartWindow? _quickStartWindow;
     private readonly List<TranslationRecord> _records = [];
@@ -74,9 +85,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         ModelCombo.AddHandler(WpfTextBoxBase.TextChangedEvent, new TextChangedEventHandler(TranslationSettings_Changed));
         _replyHotKey.Pressed += (_, _) => ToggleReplyMode();
+        _manualOcrHotKey.Pressed += (_, _) => _ = RequestOcrBurstOnceAsync("hotkey");
         _overlayController.BoundsChangedByUser += Overlay_BoundsChanged;
         _overlayController.ReplySubmitted += Overlay_ReplySubmitted;
         _overlayController.CopyReplyRequested += Overlay_CopyReplyRequested;
+        _overlayController.ManualOcrRequested += Overlay_ManualOcrRequested;
         _overlayController.ReplyEditingStarted += Overlay_ReplyEditingStarted;
         _overlayController.ReplyTargetLanguageChanged += Overlay_ReplyTargetLanguageChanged;
         _overlayController.ReplyModeExited += Overlay_ReplyModeExited;
@@ -99,6 +112,8 @@ public partial class MainWindow : Window
         AddLog("就绪。正式测试建议使用 DeepSeek API。");
         ShowInstallPathWarningIfNeeded();
         ApplyReplyHotkeyRegistration();
+        ApplyManualOcrHotkeyRegistration();
+        ShowReleaseNotesIfNeeded();
         ShowQuickStartIfNeeded();
         _ = CheckForUpdatesAsync(manual: false);
     }
@@ -108,6 +123,7 @@ public partial class MainWindow : Window
         EndFrameAdjustment(log: false);
         ExitReplyMode();
         _replyHotKey.Dispose();
+        _manualOcrHotKey.Dispose();
         _replyTranslationCts?.Cancel();
         _fetchModelsCts?.Cancel();
         _updateCheckCts?.Cancel();
@@ -139,6 +155,7 @@ public partial class MainWindow : Window
             AutoCopyReplyCheck.IsChecked = settings.AutoCopyReplyTranslation;
             ReplyHotkeyCheck.IsChecked = settings.EnableReplyHotkey;
             SelectCombo(ReplyHotkeyCombo, settings.ReplyHotkey);
+            SelectCombo(OcrModeCombo, settings.OcrMode);
             SelectCombo(ThemeModeCombo, settings.ThemeMode);
             DebugDiagnosticsCheck.IsChecked = settings.EnableDebugDiagnostics;
             FirstRunPanel.Visibility = settings.FirstRun ? Visibility.Visible : Visibility.Collapsed;
@@ -162,6 +179,7 @@ public partial class MainWindow : Window
         AppSettings settings = _config.Settings;
         settings.OcrEngine = "OneOCR";
         settings.OcrLanguage = "auto";
+        settings.OcrMode = NormalizeOcrMode(GetComboText(OcrModeCombo));
         settings.TranslationProvider = GetComboText(ProviderCombo);
         settings.ApiUrl = ApiUrlBox.Text.Trim();
         settings.ApiKey = ApiKeyBox.Password.Trim();
@@ -267,6 +285,24 @@ public partial class MainWindow : Window
     private void OverlaySettings_Changed(object sender, RoutedEventArgs e)
     {
         AutoSaveSettings();
+    }
+
+    private void OcrMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _isLoadingSettings)
+        {
+            return;
+        }
+
+        SaveSettingsFromUi();
+        UpdateManualOcrButtonState();
+        if (_isRunning)
+        {
+            RestartLoop(resetChatCycle: false, resetOcrEngine: false, "识别模式已更新，已继续运行。");
+            return;
+        }
+
+        ApplyManualOcrHotkeyRegistration();
     }
 
     private void DiagnosticsSettings_Changed(object sender, RoutedEventArgs e)
@@ -444,6 +480,36 @@ public partial class MainWindow : Window
         quickStart.Activate();
     }
 
+    private void ShowReleaseNotesIfNeeded()
+    {
+        AppSettings settings = _config.Settings;
+        string currentVersion = UpdateService.GetCurrentVersion();
+        if (settings.FirstRun ||
+            string.IsNullOrWhiteSpace(currentVersion) ||
+            string.Equals(settings.LastSeenVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
+        {
+            settings.LastSeenVersion = currentVersion;
+            _config.Save();
+            return;
+        }
+
+        string notes = ReleaseNotesWindow.LoadBundledNotes();
+        if (string.IsNullOrWhiteSpace(notes))
+        {
+            settings.LastSeenVersion = currentVersion;
+            _config.Save();
+            return;
+        }
+
+        ReleaseNotesWindow window = new(currentVersion, notes)
+        {
+            Owner = this
+        };
+        _ = window.ShowDialog();
+        settings.LastSeenVersion = currentVersion;
+        _config.Save();
+    }
+
     private void SelectArea_Click(object sender, RoutedEventArgs e)
     {
         AreaSelectorWindow selector = new();
@@ -528,7 +594,10 @@ public partial class MainWindow : Window
         bool settingsChanged = !string.Equals(_activeRunSettingsKey, settingsKey, StringComparison.Ordinal);
         bool pausedLongEnoughToReset = _pausedAt is DateTime pausedAt && DateTime.Now - pausedAt >= TimeSpan.FromSeconds(3);
         bool resetChatCycle = settingsChanged || pausedLongEnoughToReset;
-        RestartLoop(resetChatCycle, settingsChanged, resetChatCycle ? "已开始新的识别会话。" : "已继续运行。");
+        string startMessage = IsManualOcrMode()
+            ? "手动模式已启动，可点击翻译框相机按钮或按 Ctrl+Shift+T 识别一次。"
+            : resetChatCycle ? "已开始新的识别会话。" : "已继续运行。";
+        RestartLoop(resetChatCycle, settingsChanged, startMessage);
     }
 
     private void Stop_Click(object sender, RoutedEventArgs e)
@@ -822,7 +891,7 @@ public partial class MainWindow : Window
         _config.ResetUserData();
         _coordinator = CreateCoordinator();
         _frameDiffGate.Reset();
-        _burstOcrFramesRemaining = 0;
+        ResetOcrScheduler();
         InvalidateOcrEngine();
         _activeRunSettingsKey = null;
         _pausedAt = null;
@@ -854,40 +923,47 @@ public partial class MainWindow : Window
                     break;
                 }
 
-                System.Windows.Rect captureRegion = _config.Settings.CaptureRegion.ToRect();
+                System.Windows.Rect captureRegion =
+                    ScreenBoundsService.ClipToVirtualScreenOrThrow(_config.Settings.CaptureRegion.ToRect());
                 using System.Drawing.Bitmap bitmap = ScreenCaptureService.Capture(captureRegion);
                 FrameDiffResult diff = _frameDiffGate.Observe(bitmap);
                 if (_burstOcrFramesRemaining <= 0 && diff.HasChanged)
                 {
-                    TextPresenceResult textPresence = _textPresenceGate.Observe(bitmap);
-                    bool heartbeat = DateTime.Now - _lastTextGateOcrAt >= TextGateHeartbeatInterval;
-                    if (textPresence.HasLikelyText || heartbeat)
+                    DateTime now = DateTime.Now;
+                    bool activeOcr = IsActiveOcrWindow(now);
+                    TimeSpan interval = activeOcr
+                        ? ActiveOcrProbeInterval
+                        : IdleOcrProbeInterval;
+                    DateTime lastProbeAt = activeOcr
+                        ? _lastActiveOcrProbeAt
+                        : _lastIdleOcrProbeAt;
+
+                    if (lastProbeAt == DateTime.MinValue || now - lastProbeAt >= interval)
                     {
-                        _burstOcrFramesRemaining = BurstOcrFrameCount;
-                        _lastTextGateOcrAt = DateTime.Now;
-                        _consecutiveTextGateRejects = 0;
-                        AppendDedupeLog(textPresence.HasLikelyText
-                            ? $"text-gate accepted score={textPresence.Score:0.##} components={textPresence.CandidateComponentCount} lines={textPresence.CandidateLineCount} reason={textPresence.Reason}"
-                            : $"text-gate heartbeat score={textPresence.Score:0.##} components={textPresence.CandidateComponentCount} lines={textPresence.CandidateLineCount} reason={textPresence.Reason}");
-                    }
-                    else
-                    {
-                        _consecutiveTextGateRejects++;
-                        if (_consecutiveTextGateRejects % 10 == 1)
+                        _burstOcrFramesRemaining = 1;
+                        if (activeOcr)
                         {
-                            AppendDedupeLog($"text-gate rejected score={textPresence.Score:0.##} components={textPresence.CandidateComponentCount} lines={textPresence.CandidateLineCount} rejects={_consecutiveTextGateRejects} reason={textPresence.Reason}");
+                            _lastActiveOcrProbeAt = now;
                         }
+                        else
+                        {
+                            _lastIdleOcrProbeAt = now;
+                        }
+
+                        AppendDedupeLog(activeOcr
+                            ? $"ocr-scheduler active probe interval={ActiveOcrProbeInterval.TotalMilliseconds:0}ms"
+                            : $"ocr-scheduler idle probe interval={IdleOcrProbeInterval.TotalMilliseconds:0}ms");
                     }
                 }
 
                 if (_burstOcrFramesRemaining > 0)
                 {
+                    bool wasActiveOcr = IsActiveOcrWindow(DateTime.Now);
                     ranOcr = true;
                     _burstOcrFramesRemaining--;
-                    IReadOnlyList<ParsedChatLine> newLines = await _ocrEngineManager.UseAsync(
-                        _config.Settings.OcrEngine,
-                        _config.Settings.OcrLanguage,
-                        (engine, token) => _coordinator.DetectNewLinesFromBitmapAsync(engine, bitmap, captureRegion, token),
+                    IReadOnlyList<ParsedChatLine> newLines = await DetectNewLinesFromBitmapLockedAsync(
+                        bitmap,
+                        captureRegion,
                         cancellationToken);
 
                     if (!IsActiveGeneration(generation))
@@ -900,6 +976,8 @@ public partial class MainWindow : Window
                     {
                         EnqueueTranslationLines(newLines, generation, cancellationToken);
                     }
+
+                    UpdateOcrSchedulerAfterOcr(DateTime.Now, wasActiveOcr, newLines.Count);
 
                     Dispatcher.Invoke(() =>
                     {
@@ -963,6 +1041,216 @@ public partial class MainWindow : Window
             {
                 break;
             }
+        }
+    }
+
+    private bool IsActiveOcrWindow(DateTime now)
+    {
+        if (_activeOcrUntil is not DateTime activeUntil)
+        {
+            return false;
+        }
+
+        if (now <= activeUntil)
+        {
+            return true;
+        }
+
+        _activeOcrUntil = null;
+        return false;
+    }
+
+    private void UpdateOcrSchedulerAfterOcr(DateTime now, bool wasActiveOcr, int newLineCount)
+    {
+        bool hasVisibleChat = _coordinator.HasVisibleChat;
+        if (hasVisibleChat || newLineCount > 0)
+        {
+            _activeOcrUntil = now + ActiveOcrWindowDuration;
+            _lastActiveOcrProbeAt = now;
+            _consecutiveNoChatOcrFrames = 0;
+
+            if (!wasActiveOcr || newLineCount > 0)
+            {
+                _burstOcrFramesRemaining = Math.Max(_burstOcrFramesRemaining, BurstOcrFrameCount - 1);
+                AppendDedupeLog($"ocr-scheduler active burst visible={hasVisibleChat} newLines={newLineCount}");
+            }
+
+            return;
+        }
+
+        if (!wasActiveOcr)
+        {
+            _consecutiveNoChatOcrFrames = 0;
+            return;
+        }
+
+        _consecutiveNoChatOcrFrames++;
+        if (_consecutiveNoChatOcrFrames >= NoChatOcrExitCount)
+        {
+            _activeOcrUntil = null;
+            _burstOcrFramesRemaining = 0;
+            _consecutiveNoChatOcrFrames = 0;
+            AppendDedupeLog("ocr-scheduler returned to idle after no visible chat");
+        }
+    }
+
+    private void ResetOcrScheduler()
+    {
+        _lastIdleOcrProbeAt = DateTime.MinValue;
+        _lastActiveOcrProbeAt = DateTime.MinValue;
+        _activeOcrUntil = null;
+        _burstOcrFramesRemaining = 0;
+        _consecutiveNoChatOcrFrames = 0;
+    }
+
+    private async Task<IReadOnlyList<ParsedChatLine>> DetectNewLinesFromBitmapLockedAsync(
+        System.Drawing.Bitmap bitmap,
+        System.Windows.Rect captureRegion,
+        CancellationToken cancellationToken)
+    {
+        await _ocrSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            return await DetectNewLinesFromBitmapCoreAsync(bitmap, captureRegion, cancellationToken);
+        }
+        finally
+        {
+            _ocrSemaphore.Release();
+        }
+    }
+
+    private Task<IReadOnlyList<ParsedChatLine>> DetectNewLinesFromBitmapCoreAsync(
+        System.Drawing.Bitmap bitmap,
+        System.Windows.Rect captureRegion,
+        CancellationToken cancellationToken)
+    {
+        return _ocrEngineManager.UseAsync(
+            _config.Settings.OcrEngine,
+            _config.Settings.OcrLanguage,
+            (engine, token) => _coordinator.DetectNewLinesFromBitmapAsync(engine, bitmap, captureRegion, token),
+            cancellationToken);
+    }
+
+    private async Task RequestOcrBurstOnceAsync(string trigger)
+    {
+        if (!_isRunning)
+        {
+            AddLog("请先点击开始，再识别一次。");
+            return;
+        }
+
+        if (_config.Settings.CaptureRegion is null)
+        {
+            AddLog("请先选择聊天区域。");
+            return;
+        }
+
+        if (Interlocked.Exchange(ref _ocrBurstOnceRunning, 1) == 1)
+        {
+            AddLog("正在识别，请稍候。");
+            return;
+        }
+
+        int generation = Volatile.Read(ref _runGeneration);
+        CancellationToken cancellationToken = _loopCts?.Token ?? CancellationToken.None;
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        UpdateManualOcrButtonState(busy: true);
+        AddLog(trigger == "hotkey" ? "手动热键触发识别一次。" : "翻译框按钮触发识别一次。");
+
+        try
+        {
+            await _ocrSemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                for (int frame = 0; frame < ManualOcrBurstFrameCount; frame++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!IsActiveGeneration(generation))
+                    {
+                        break;
+                    }
+
+                    System.Windows.Rect captureRegion =
+                        ScreenBoundsService.ClipToVirtualScreenOrThrow(_config.Settings.CaptureRegion.ToRect());
+                    using System.Drawing.Bitmap bitmap = ScreenCaptureService.Capture(captureRegion);
+                    IReadOnlyList<ParsedChatLine> newLines = await DetectNewLinesFromBitmapCoreAsync(
+                        bitmap,
+                        captureRegion,
+                        cancellationToken);
+
+                    if (!IsActiveGeneration(generation))
+                    {
+                        break;
+                    }
+
+                    _recentChatLanguages.Record(_coordinator.LastVisibleChatLines);
+                    if (newLines.Count > 0)
+                    {
+                        EnqueueTranslationLines(newLines, generation, cancellationToken);
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (IsActiveGeneration(generation))
+                        {
+                            ApplyChatVisibilityLevel(_coordinator.HasVisibleChat);
+                        }
+                    });
+
+                    if (frame < ManualOcrBurstFrameCount - 1)
+                    {
+                        await Task.Delay(ManualOcrBurstFrameDelay, cancellationToken);
+                    }
+                }
+            }
+            finally
+            {
+                _ocrSemaphore.Release();
+            }
+
+            stopwatch.Stop();
+            Dispatcher.Invoke(() =>
+            {
+                if (!IsActiveGeneration(generation))
+                {
+                    return;
+                }
+
+                MaybeHideOverlayAfterIdle();
+                RefreshReplyTargetDisplay();
+                LatencyText.Text = $"{stopwatch.ElapsedMilliseconds} ms OCR";
+                RefreshRuntimeMetrics();
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (InvalidCaptureRegionException ex)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (IsActiveGeneration(generation))
+                {
+                    AddLog($"错误：{ex.Message}");
+                    StopLoop(hideOverlay: true, clearOverlay: false);
+                    StatusText.Text = "已暂停";
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (IsActiveGeneration(generation))
+                {
+                    AddLog($"识别一次失败：{ex.Message}");
+                }
+            });
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _ocrBurstOnceRunning, 0);
+            UpdateManualOcrButtonState();
         }
     }
 
@@ -1180,10 +1468,8 @@ public partial class MainWindow : Window
         {
             _coordinator.ResetChatCycle();
             _frameDiffGate.Reset();
-            _burstOcrFramesRemaining = 0;
+            ResetOcrScheduler();
             _consecutiveNoChatFrames = 0;
-            _consecutiveTextGateRejects = 0;
-            _lastTextGateOcrAt = DateTime.Now;
         }
 
         if (resetOcrEngine)
@@ -1199,11 +1485,23 @@ public partial class MainWindow : Window
         _overlayHiddenByIdle = false;
         _consecutiveNoChatFrames = 0;
         _activeRunSettingsKey = CreateRunSettingsKey();
-        StatusText.Text = "运行中";
+        bool manualMode = IsManualOcrMode();
+        StatusText.Text = manualMode ? "手动待命" : "运行中";
         ApplyRunningState();
+        if (manualMode)
+        {
+            _overlayController.UpdateRecords(_records);
+            _overlayController.Show();
+            _overlayHiddenByIdle = false;
+        }
+
+        ApplyManualOcrHotkeyRegistration();
         RefreshRuntimeMetrics();
         AddLog(message);
-        _ = RunLoopAsync(generation, _loopCts.Token);
+        if (!manualMode)
+        {
+            _ = RunLoopAsync(generation, _loopCts.Token);
+        }
     }
 
     private void StopLoop(bool hideOverlay, bool clearOverlay)
@@ -1218,10 +1516,10 @@ public partial class MainWindow : Window
         _loopCts = null;
         Interlocked.Increment(ref _runGeneration);
         _isRunning = false;
-        _burstOcrFramesRemaining = 0;
+        ResetOcrScheduler();
         _consecutiveNoChatFrames = 0;
-        _consecutiveTextGateRejects = 0;
-        _lastTextGateOcrAt = DateTime.Now;
+        Interlocked.Exchange(ref _ocrBurstOnceRunning, 0);
+        _manualOcrHotKey.Unregister();
         ClearTranslationQueue();
         _coordinator?.ClearPendingTranslations();
         ApplyRunningState();
@@ -1264,6 +1562,7 @@ public partial class MainWindow : Window
     private void ApplyOverlaySettings()
     {
         _overlayController.ApplySettings(_config.Settings);
+        UpdateManualOcrButtonState();
     }
 
     private void ApplyOverlayVisibilityPreference(bool activate)
@@ -1439,6 +1738,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Overlay_ManualOcrRequested(object? sender, EventArgs e)
+    {
+        _ = RequestOcrBurstOnceAsync("overlay");
+    }
+
     private static string FormatClipboardFailure(ClipboardSetResult result)
     {
         string owner = string.IsNullOrWhiteSpace(result.OwnerDescription)
@@ -1570,6 +1874,47 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ApplyManualOcrHotkeyRegistration()
+    {
+        bool enabled = _isRunning && IsManualOcrMode();
+        HotKeyRegistrationResult result = _manualOcrHotKey.Apply(
+            new WindowInteropHelper(this).Handle,
+            enabled,
+            ManualOcrHotkeyGesture);
+        switch (result.Status)
+        {
+            case HotKeyRegistrationStatus.Registered:
+                AddLog($"手动识别热键已启用：{result.Gesture}。");
+                break;
+            case HotKeyRegistrationStatus.InvalidGesture:
+                AddLog($"手动识别热键配置无效：{result.Gesture}");
+                break;
+            case HotKeyRegistrationStatus.WindowHandleUnavailable:
+                AddLog("手动识别热键注册失败：窗口句柄不可用。");
+                break;
+            case HotKeyRegistrationStatus.RegistrationFailed:
+                AddLog("手动识别热键注册失败，可能已被其他程序占用。");
+                break;
+        }
+    }
+
+    private void UpdateManualOcrButtonState(bool? busy = null)
+    {
+        if (!_overlayController.IsCreated)
+        {
+            return;
+        }
+
+        bool isBusy = busy ?? Volatile.Read(ref _ocrBurstOnceRunning) == 1;
+        bool enabled = _isRunning && !isBusy;
+        string tooltip = !_isRunning
+            ? "点击开始后可识别一次当前区域"
+            : isBusy
+                ? "正在识别..."
+                : "识别一次当前区域";
+        _overlayController.SetManualOcrButtonState(enabled, isBusy, tooltip);
+    }
+
     private void EnsureDefaultModelOptions()
     {
         AddModelOption("deepseek-v4-flash");
@@ -1593,11 +1938,18 @@ public partial class MainWindow : Window
     {
         settings.OcrEngine = "OneOCR";
         settings.OcrLanguage = "auto";
+        settings.OcrMode = NormalizeOcrMode(settings.OcrMode);
         if (settings.TranslationProvider is "Local" or "Local Rules")
         {
             settings.TranslationProvider = "DeepSeek";
         }
     }
+
+    private bool IsManualOcrMode() =>
+        string.Equals(_config.Settings.OcrMode, "manual", StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeOcrMode(string value) =>
+        string.Equals(value, "manual", StringComparison.OrdinalIgnoreCase) ? "manual" : "auto";
 
     private void ClearOverlayRecords()
     {
@@ -1694,6 +2046,7 @@ public partial class MainWindow : Window
         StartButton.IsEnabled = !_isRunning;
         StopButton.IsEnabled = _isRunning;
         AdjustFrameButton.IsEnabled = true;
+        UpdateManualOcrButtonState();
         RefreshRuntimeMetrics();
     }
 
@@ -1734,6 +2087,7 @@ public partial class MainWindow : Window
         return string.Join("|",
             _config.Settings.OcrEngine,
             _config.Settings.OcrLanguage,
+            _config.Settings.OcrMode,
             _config.Settings.TranslationProvider,
             _config.Settings.ApiUrl,
             _config.Settings.Model,

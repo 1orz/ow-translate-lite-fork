@@ -12,29 +12,47 @@
         Width="520"
         Height="180">
     <Window.Resources>
-        <SolidColorBrush x:Key="ReplyComboForegroundBrush" Color="#06080C"/>
-        <SolidColorBrush x:Key="ReplyComboAccentBrush" Color="#161A22"/>
-        <SolidColorBrush x:Key="ReplyComboButtonBrush" Color="#DDECF4FF"/>
+        <SolidColorBrush x:Key="ReplyComboForegroundBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ReplyComboAccentBrush" Color="#64D2FF"/>
+        <SolidColorBrush x:Key="ReplyComboButtonBrush" Color="#E0181C25"/>
         <SolidColorBrush x:Key="OverlayMutedBrush" Color="#A7AFBA"/>
         <SolidColorBrush x:Key="OverlayPanelBrush" Color="#D40B0C10"/>
         <SolidColorBrush x:Key="OverlayInputBrush" Color="#E0161820"/>
         <SolidColorBrush x:Key="OverlayLineBrush" Color="#33FFFFFF"/>
 
         <Style x:Key="ReplyComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
-            <Setter Property="Foreground" Value="#D7E7F2"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="#171A22"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Style.Triggers>
-                <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#253044"/>
-                    <Setter Property="Foreground" Value="{StaticResource ReplyComboAccentBrush}"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                        <Border x:Name="ItemChrome"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="6">
+                            <TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Foreground="White"
+                                       HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                       TextAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#253044"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#20334A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ReplyComboBoxStyle" TargetType="{x:Type ComboBox}">
-            <Setter Property="Foreground" Value="{StaticResource ReplyComboForegroundBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#88FFFFFF"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,0"/>
@@ -51,12 +69,12 @@
                                     <ControlTemplate TargetType="{x:Type ToggleButton}">
                                         <Border x:Name="Chrome"
                                                 CornerRadius="12"
-                                                Background="{TemplateBinding Background}"
-                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                Background="{StaticResource ReplyComboButtonBrush}"
+                                                BorderBrush="#5264D2FF"
                                                 BorderThickness="{TemplateBinding BorderThickness}">
                                             <Grid>
                                                 <TextBlock Text="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
-                                                           Foreground="{StaticResource ReplyComboForegroundBrush}"
+                                                           Foreground="White"
                                                            FontWeight="SemiBold"
                                                            Margin="8,0,18,0"
                                                            VerticalAlignment="Center"
@@ -218,6 +236,8 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="34"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="34"/>
                     </Grid.ColumnDefinitions>
                     <ComboBox x:Name="ReplyTargetCombo"
                               Grid.Column="0"
@@ -225,10 +245,10 @@
                               BorderThickness="1"
                               Background="{StaticResource ReplyComboButtonBrush}"
                               VerticalContentAlignment="Center">
-                        <ComboBoxItem Content="自动" Tag="auto"/>
-                        <ComboBoxItem Content="英语" Tag="en"/>
-                        <ComboBoxItem Content="日语" Tag="ja"/>
-                        <ComboBoxItem Content="韩语" Tag="ko"/>
+                        <ComboBoxItem Content="自动" Tag="auto" Style="{StaticResource ReplyComboBoxItemStyle}"/>
+                        <ComboBoxItem Content="英语" Tag="en" Style="{StaticResource ReplyComboBoxItemStyle}"/>
+                        <ComboBoxItem Content="日语" Tag="ja" Style="{StaticResource ReplyComboBoxItemStyle}"/>
+                        <ComboBoxItem Content="韩语" Tag="ko" Style="{StaticResource ReplyComboBoxItemStyle}"/>
                     </ComboBox>
                     <TextBox x:Name="ReplyInputBox"
                              Grid.Column="2"
@@ -238,15 +258,31 @@
                              CaretBrush="#64D2FF"
                              Padding="10,5"
                              VerticalContentAlignment="Center"/>
+                    <Button x:Name="ManualOcrButton"
+                             Grid.Column="4"
+                             Width="32"
+                             Height="32"
+                             Padding="0"
+                             Background="{StaticResource OverlayInputBrush}"
+                             BorderBrush="#44FFFFFF"
+                             BorderThickness="1"
+                             ToolTip="识别一次当前区域">
+                        <Path Data="{StaticResource IconCamera}"
+                              Stroke="#D7F3FF"
+                              StrokeThickness="1.8"
+                              Stretch="Uniform"
+                              Width="15"
+                              Height="15"/>
+                    </Button>
                     <Button x:Name="CopyReplyButton"
-                            Grid.Column="4"
+                            Grid.Column="6"
                             Width="32"
                             Height="32"
                             Padding="0"
                             Background="{StaticResource OverlayInputBrush}"
                             BorderBrush="#44FFFFFF"
                             BorderThickness="1"
-                            ToolTip="复制译文">
+                             ToolTip="复制译文">
                         <Path Data="{StaticResource IconCopy}"
                               Stroke="#D7F3FF"
                               StrokeThickness="1.8"

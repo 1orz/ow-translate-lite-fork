@@ -58,10 +58,11 @@ The visible OW chat is treated as an append-only suffix of the authoritative tim
 
 ## Sampling And Translation Queue
 
-The main loop has two sampling modes:
+The main loop has two sampling modes plus an idle OCR probe:
 
 - Patrol: roughly 250-300 ms screenshots plus `FrameDiffGate` pixel signatures, with no OCR on stable frames.
-- Burst: when the selected chat region changes, run 3 OCR frames at the same cadence, then fall back to patrol.
+- Idle probe: when the selected chat region keeps changing because the OW background is moving, run OCR at a lower cadence of roughly 700 ms instead of every changed patrol frame.
+- Active burst: once OCR sees visible chat, run a short 3-frame burst and keep a 5-second active window with roughly 300 ms OCR probes, then return to idle probing after consecutive no-chat OCR frames.
 
 The translation side keeps a single worker. Normal batches are small; when backlog reaches the soft threshold, the worker takes a larger batch instead of dropping old messages. A hard safety limit remains to avoid unbounded memory growth, and any skip is logged explicitly.
 

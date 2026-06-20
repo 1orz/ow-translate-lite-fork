@@ -4,6 +4,8 @@ using System.Windows.Input;
 using OwTranslateLite.Core;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using DrawingPoint = System.Drawing.Point;
+using FormsCursor = System.Windows.Forms.Cursor;
 using Point = System.Windows.Point;
 
 namespace OwTranslateLite;
@@ -11,6 +13,7 @@ namespace OwTranslateLite;
 public partial class AreaSelectorWindow : Window
 {
     private Point _start;
+    private DrawingPoint _startScreen;
     private bool _drawing;
 
     public event EventHandler<Rect>? SelectionCompleted;
@@ -31,6 +34,7 @@ public partial class AreaSelectorWindow : Window
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
         _start = e.GetPosition(this);
+        _startScreen = FormsCursor.Position;
         _drawing = true;
         SelectionRect.Visibility = Visibility.Visible;
         SelectionRect.Width = 0;
@@ -65,20 +69,18 @@ public partial class AreaSelectorWindow : Window
 
         ReleaseMouseCapture();
         _drawing = false;
-        Point current = e.GetPosition(this);
-        double left = Math.Min(_start.X, current.X);
-        double top = Math.Min(_start.Y, current.Y);
-        double width = Math.Abs(current.X - _start.X);
-        double height = Math.Abs(current.Y - _start.Y);
-        if (width < ScreenBoundsService.MinimumCaptureWidth || height < ScreenBoundsService.MinimumCaptureHeight)
+        DrawingPoint currentScreen = FormsCursor.Position;
+        double screenLeft = Math.Min(_startScreen.X, currentScreen.X);
+        double screenTop = Math.Min(_startScreen.Y, currentScreen.Y);
+        double screenWidth = Math.Abs(currentScreen.X - _startScreen.X);
+        double screenHeight = Math.Abs(currentScreen.Y - _startScreen.Y);
+        if (screenWidth < ScreenBoundsService.MinimumCaptureWidth || screenHeight < ScreenBoundsService.MinimumCaptureHeight)
         {
             Close();
             return;
         }
 
-        Point screenTopLeft = PointToScreen(new Point(left, top));
-        Point screenBottomRight = PointToScreen(new Point(left + width, top + height));
-        Rect rect = new(screenTopLeft.X, screenTopLeft.Y, screenBottomRight.X - screenTopLeft.X, screenBottomRight.Y - screenTopLeft.Y);
+        Rect rect = new(screenLeft, screenTop, screenWidth, screenHeight);
         if (!ScreenBoundsService.TryClipToVirtualScreen(rect, out Rect clipped))
         {
             System.Windows.MessageBox.Show(

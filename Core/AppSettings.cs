@@ -8,10 +8,12 @@ public sealed class AppSettings
     public int DataSchemaVersion { get; set; } = ConfigStore.CurrentDataSchemaVersion;
     public bool FirstRun { get; set; } = true;
     public bool ShowQuickStart { get; set; } = true;
+    public string LastSeenVersion { get; set; } = "";
     public string ThemeMode { get; set; } = "Dark";
     public string IgnoredUpdateVersion { get; set; } = "";
     public string OcrEngine { get; set; } = "OneOCR";
     public string OcrLanguage { get; set; } = "auto";
+    public string OcrMode { get; set; } = "auto";
     public string TranslationProvider { get; set; } = "DeepSeek";
     public string ApiUrl { get; set; } = "https://api.deepseek.com";
     [JsonIgnore]
